@@ -1,0 +1,58 @@
+# Default configuration for Cosmic Anomaly Detector
+
+# System Settings
+log_level: INFO
+log_format: "%(asctime)s - %(name)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s"
+data_root_path: "data/"
+output_path: "output/"
+temp_path: "temp/"
+
+# Performance Settings
+max_workers: 4
+memory_limit_gb: 8.0
+gpu_enabled: true
+batch_size: 16
+
+# Scientific Settings
+scientific_notation: true
+reproducible_random_seed: 42
+validation_strict: true
+
+# Image Processing Configuration
+image_processing:
+  max_image_size: 4096
+  noise_reduction_sigma: 1.0
+  edge_detection_threshold: 0.1
+  object_detection_min_area: 100
+  coordinate_system: "icrs"
+  preprocessing_steps:
+    - "noise_reduction"
+    - "edge_enhancement"
+    - "normalization"
+
+# Gravitational Analysis Configuration
+gravitational_analysis:
+  gravitational_constant: 6.67430e-11  # m^3 kg^-1 s^-2
+  kepler_tolerance: 0.05  # 5% tolerance for orbital mechanics
+  lensing_detection_threshold: 0.01
+  mass_estimation_method: "orbital_velocity"
+  physics_validation_strict: true
+
+# Classification Configuration
+classification:
+  model_type: "ensemble"
+  confidence_threshold: 0.85
+  false_positive_penalty: 10.0
+  feature_extraction_method: "combined"
+  cross_validation_folds: 5
+  model_save_path: "models/"
+
+# Anomaly Detection Configuration
+anomaly_detection:
+  multi_modal_weights:
+    visual: 0.4
+    gravitational: 0.4
+    spectral: 0.2
+  detection_threshold: 0.9
+  consensus_required: 2  # Minimum number of methods that must agree
+  adaptive_thresholds: true

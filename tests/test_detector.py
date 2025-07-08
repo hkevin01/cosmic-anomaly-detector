@@ -1,10 +1,13 @@
 """
-Tests for the main AnomalyDetector class
+Unit Tests for Cosmic Anomaly Detector
+
+Tests for the core detection functionality with comprehensive coverage.
 """
 
 import os
 import sys
-from unittest.mock import Mock, patch
+from pathlib import Path
+from unittest.mock import MagicMock, Mock, patch
 
 import numpy as np
 import pytest
@@ -13,6 +16,13 @@ import pytest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 from cosmic_anomaly_detector.core.detector import AnomalyDetector, DetectionResult
+from cosmic_anomaly_detector.utils.config import SystemConfig
+from tests.conftest import (
+    TestUtilities,
+    assert_confidence_scores_valid,
+    assert_coordinates_valid,
+    assert_detection_valid,
+)
 
 
 class TestAnomalyDetector:
