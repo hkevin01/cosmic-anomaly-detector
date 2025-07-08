@@ -56,3 +56,31 @@ anomaly_detection:
   detection_threshold: 0.9
   consensus_required: 2  # Minimum number of methods that must agree
   adaptive_thresholds: true
+
+# Machine Learning Configuration
+machine_learning:
+  model_types: ["ensemble", "deep_learning"]
+  feature_scaling: "standard"
+  max_epochs: 100
+  batch_size: 32
+  learning_rate: 0.001
+  early_stopping_patience: 10
+  cross_validation_folds: 5
+
+# Training Data Configuration
+training_data:
+  synthetic_samples: 1000
+  anomaly_fraction: 0.1
+  augmentation_factor: 2
+  balance_classes: true
+  noise_level: 0.1
+  save_path: "data/training/"
+
+# Feature Engineering Configuration
+feature_engineering:
+  include_photometric: true
+  include_morphological: true
+  include_physics: true
+  include_context: true
+  feature_selection_threshold: 0.01
+  max_features: 100
