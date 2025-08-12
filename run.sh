@@ -62,51 +62,67 @@ check_python_version() {
     print_success "Python $PYTHON_VERSION found"
 }
 
+# Ensure venv exists and activate (auto-create if missing)
+ensure_venv() {
+    if [ ! -d "venv" ]; then
+        print_warning "Virtual environment not found. Creating automatically..."
+        setup_venv
+        activate_venv
+        if [ -f "requirements.txt" ]; then
+            install_dependencies
+        else
+            print_warning "requirements.txt not found; skipping dependency install."
+        fi
+    else
+        activate_venv
+    fi
+}
+
 # Function to setup virtual environment
 setup_venv() {
     if [ ! -d "venv" ]; then
-        print_status "Creating virtual environment..."
+            ensure_venv
         $PYTHON_CMD -m venv venv
         print_success "Virtual environment created"
     else
         print_status "Virtual environment already exists"
     fi
-}
+            ensure_venv
 
 # Function to activate virtual environment
 activate_venv() {
     if [ -d "venv" ]; then
-        print_status "Activating virtual environment..."
+            ensure_venv
         source venv/bin/activate
         print_success "Virtual environment activated"
     else
         print_error "Virtual environment not found. Run with --setup first."
-        exit 1
+            ensure_venv
     fi
 }
 
 # Function to install dependencies
 install_dependencies() {
-    print_status "Installing dependencies..."
-    
+            ensure_venv
+
     # Upgrade pip first
     pip install --upgrade pip
-    
-    # Install requirements
+
+            ensure_venv
     if [ -f "requirements.txt" ]; then
         pip install -r requirements.txt
         print_success "Requirements installed"
     else
-        print_error "requirements.txt not found"
+            ensure_venv
         exit 1
     fi
-    
+
     # Install development dependencies if available
     if [ -f "requirements-dev.txt" ]; then
         pip install -r requirements-dev.txt
         print_success "Development dependencies installed"
     fi
-    
+
     # Install the package in development mode
     pip install -e .
     print_success "Package installed in development mode"
@@ -176,41 +192,41 @@ print('Sample FITS files created in data/samples/')
 # Function to check system requirements
 check_requirements() {
     print_status "Checking system requirements..."
-    
+
     # Check for required system packages
     MISSING_PACKAGES=""
-    
+
     # Check for development headers (needed for some Python packages)
     if ! dpkg -l | grep -q python3-dev; then
         MISSING_PACKAGES="$MISSING_PACKAGES python3-dev"
     fi
-    
+
     # Check for FITS libraries
     if ! ldconfig -p | grep -q libcfitsio; then
         MISSING_PACKAGES="$MISSING_PACKAGES libcfitsio-dev"
     fi
-    
+
     # Check for HDF5 libraries
     if ! ldconfig -p | grep -q libhdf5; then
         MISSING_PACKAGES="$MISSING_PACKAGES libhdf5-dev"
     fi
-    
+
     if [ -n "$MISSING_PACKAGES" ]; then
         print_warning "Missing system packages: $MISSING_PACKAGES"
         print_status "Install with: sudo apt-get install$MISSING_PACKAGES"
     fi
-    
+
     print_success "System requirements check completed"
 }
 
 # Function to clean up
 cleanup() {
     print_status "Cleaning up..."
-    
+
     # Remove Python cache
     find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
     find . -type f -name "*.pyc" -delete 2>/dev/null || true
-    
+
     # Remove test artifacts
     rm -rf .pytest_cache
     rm -rf .coverage
@@ -218,7 +234,7 @@ cleanup() {
     rm -rf build
     rm -rf dist
     rm -rf *.egg-info
-    
+
     print_success "Cleanup completed"
 }
 
@@ -256,7 +272,7 @@ show_usage() {
 main() {
     # Parse command line arguments
     COMMAND="${1:-gui}"  # Default to GUI if no command specified
-    
+
     case "$COMMAND" in
         "setup")
             print_status "Setting up Cosmic Anomaly Detector development environment..."
