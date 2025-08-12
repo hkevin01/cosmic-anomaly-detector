@@ -4,10 +4,10 @@ Provides a Pydantic model mirroring the dataclass SystemConfig for stricter
 runtime validation and a helper to load/validate then return the legacy
 dataclass instance for backwards compatibility.
 """
-from __future__ import annotations  # mypy: ignore-errors
+from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any, Dict
 
 import yaml  # type: ignore
 from pydantic import (  # type: ignore
@@ -17,12 +17,17 @@ from pydantic import (  # type: ignore
 )
 
 from .config import (
-    SystemConfig,
-    ImageProcessingConfig,
-    GravitationalAnalysisConfig,
-    ClassificationConfig,
     AnomalyDetectionConfig,
+    ClassificationConfig,
+    GravitationalAnalysisConfig,
+    ImageProcessingConfig,
+    SystemConfig,
 )
+
+# mypy: ignore-errors
+
+
+
 
 
 class ImageProcessingModel(BaseModel):

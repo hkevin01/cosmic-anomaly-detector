@@ -1,7 +1,9 @@
+from typing import Any
+
 from cosmic_anomaly_detector.core.detector import AnomalyDetector
 
 
-def test_gravity_adapter_invocation(monkeypatch) -> None:
+def test_gravity_adapter_invocation(monkeypatch: Any) -> None:
     calls = {}
 
     class FakeResult:
@@ -17,7 +19,7 @@ def test_gravity_adapter_invocation(monkeypatch) -> None:
         det.gravitational_analyzer, "analyze_physics", fake_analyze
     )
     # Provide minimal processed image by patching image processor
-    
+
     class FakeProc:
         def process(self, _path):  # type: ignore[no-untyped-def]
             import numpy as np

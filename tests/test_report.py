@@ -1,7 +1,9 @@
+from typing import Any
+
 from cosmic_anomaly_detector.reporting.report import ReportGenerator
 
 
-def test_report_generation(tmp_path) -> None:  # type: ignore[no-untyped-def]
+def test_report_generation(tmp_path: Any) -> None:
     run_dir = tmp_path
     results = [
         {
@@ -20,4 +22,5 @@ def test_report_generation(tmp_path) -> None:  # type: ignore[no-untyped-def]
     text = path.read_text(encoding="utf-8")
     assert "Cosmic Anomaly Detector Report" in text
     assert "example.fits" in text
+    assert "gravitational" in text
     assert "gravitational" in text

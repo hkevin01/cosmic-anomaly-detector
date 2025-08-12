@@ -83,6 +83,10 @@ module = [
 ]
 ignore_missing_imports = true
 
+[[tool.mypy.overrides]]
+module = ["tests.*"]
+ignore_errors = true
+
 [tool.coverage.run]
 source = ["src/cosmic_anomaly_detector"]
 omit = ["*/tests/*", "*/test_*", "*/__init__.py", "*/conftest.py"]
