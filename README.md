@@ -8,7 +8,7 @@ This project uses advanced computer vision and machine learning techniques to:
 
 - Analyze JWST images for anomalous objects
 - Detect structures that don't follow gravitational physics
-- Identify potential Dyson spheres and megastructures  
+- Identify potential Dyson spheres and megastructures
 - Classify objects as natural vs. artificial using AI
 - Flag candidates for further scientific investigation
 
@@ -57,19 +57,39 @@ pip install -r requirements.txt
 
 ## 🔬 Usage
 
+### Python API
+
 ```python
-from cosmic_anomaly_detector import AnomalyDetector
+from cosmic_anomaly_detector.core.detector import AnomalyDetector
 
-# Initialize detector
 detector = AnomalyDetector()
-
-# Analyze JWST image
-results = detector.analyze_image("path/to/jwst_image.fits")
-
-# Check for anomalies
-if results.has_anomalies():
-    print(f"Found {len(results.anomalies)} potential artificial structures!")
+result = detector.analyze_image("path/to/jwst_image.fits")
+print("Anomalies detected:", len(result.anomalies))
 ```
+
+### CLI (Vertical Slice)
+
+After installation the CLI entrypoint `cosmic-analyze` (alias `cad` if symlinked) is available:
+
+```bash
+# Analyze a single FITS file
+cosmic-analyze analyze data/sample.fits
+
+# Analyze a directory recursively (default)
+cosmic-analyze analyze data/jwst/ --recursive
+
+# Limit number of files and specify a run id
+cosmic-analyze analyze data/jwst/ --limit 3 --run-id TEST123
+```
+
+Outputs are written under `output/runs/<run_id>/` containing:
+
+| File | Description |
+|------|-------------|
+| results.json | Structured anomaly data |
+| report.md | Markdown summary report |
+| summary.json | Lightweight statistics |
+| thumbnail.png | Placeholder visualization (will evolve) |
 
 ## 🤝 Contributing
 
