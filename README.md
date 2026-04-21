@@ -12,8 +12,10 @@
 [![Repo Size](https://img.shields.io/github/repo-size/hkevin01/cosmic-anomaly-detector?style=flat-square)](https://github.com/hkevin01/cosmic-anomaly-detector)
 [![Issues](https://img.shields.io/github/issues/hkevin01/cosmic-anomaly-detector?style=flat-square)](https://github.com/hkevin01/cosmic-anomaly-detector/issues)
 [![Python](https://img.shields.io/badge/python-3.9%2B-blue?style=flat-square&logo=python)](https://python.org)
-[![Astropy](https://img.shields.io/badge/astropy-6.x-orange?style=flat-square&logo=python)](https://www.astropy.org)
+[![Astropy](https://img.shields.io/badge/astropy-7.x-orange?style=flat-square&logo=python)](https://www.astropy.org)
+[![astroquery](https://img.shields.io/badge/astroquery-0.4%2B-blueviolet?style=flat-square)](https://astroquery.readthedocs.io)
 [![NumPy](https://img.shields.io/badge/numpy-scientific%20computing-013243?style=flat-square&logo=numpy)](https://numpy.org)
+[![Tests](https://img.shields.io/badge/tests-12%20passing-brightgreen?style=flat-square)](tests/)
 
 </div>
 
@@ -23,12 +25,14 @@
 
 - [Overview](#overview)
 - [Key Features](#key-features)
+- [Detection Algorithms](#detection-algorithms)
 - [Architecture](#architecture)
 - [Usage Flow](#usage-flow)
 - [Detection Breakdown](#detection-breakdown)
 - [Technology Stack](#technology-stack)
 - [Setup & Installation](#setup--installation)
 - [Usage](#usage)
+- [Example Scripts](#example-scripts)
 - [Core Capabilities](#core-capabilities)
 - [Project Roadmap](#project-roadmap)
 - [Development Status](#development-status)
@@ -44,7 +48,7 @@
 The system is designed for astrophysicists, SETI researchers, and data scientists who need a reproducible, batch-capable pipeline for hypothesis-driven anomaly detection at scale. Every detection is accompanied by gravitational compliance scores, orbital parameter analysis, and structured JSON output for downstream analysis.
 
 > [!IMPORTANT]
-> This project is in active development. Classification models use ensemble placeholder architecture; real pretrained weights are planned for Phase 4. All gravitational calculations are physics-validated and production-ready.
+> All four detection algorithm implementations are active and physics-validated: starlet wavelet decomposition, Gaussian matched filter, IR excess SED fitting (Suazo et al. 2024), and microlensing magnification anomaly detection (Paczyński 1986). JWST data is accessible live via MAST using `astroquery`. Classification ensemble uses heuristic models; real pretrained weights are planned for Phase 5.
 
 <p align="right">(<a href="#top">back to top ↑</a>)</p>
 
@@ -56,7 +60,12 @@ The system is designed for astrophysicists, SETI researchers, and data scientist
 |------|---------|-------------|--------|--------|
 | 🔭 | FITS Image Pipeline | Automated ingestion and preprocessing of JWST FITS files using astropy | High | ✅ Stable |
 | ⚖️ | Gravitational Validation | Kepler's law compliance scoring, orbital mechanics analysis, mass anomaly detection | High | ✅ Stable |
-| 🤖 | Ensemble Classifier | Multi-model AI stack: Dyson sphere detector, megastructure classifier, geometric anomaly detector | High | 🟡 In Progress |
+| 🌊 | Wavelet Source Detection | Starlet (isotropic undecimated wavelet) à trous decomposition — recovers faint sources missed by sigma-clipping | High | ✅ Stable |
+| 🎯 | Matched Filter Detection | Statistically optimal Gaussian PSF matched filter at multiple FWHM scales; MAD noise estimate | High | ✅ Stable |
+| ♨️ | IR Excess / Dyson Sphere SED | Grid-search covering factor γ and DS temperature following Suazo et al. 2024 (MNRAS 531, 695) | High | ✅ Stable |
+| 🌀 | Microlensing Anomaly | Paczyński (1986) magnification curve — flags flux profiles inconsistent with point-lens models | Medium | ✅ Stable |
+| 🛰️ | JWST Live Data Access | `JWSTDataFetcher` queries MAST via astroquery, downloads calibrated Level 2/3 FITS products | High | ✅ Stable |
+| 🤖 | Ensemble Classifier | Multi-model AI stack: Dyson sphere detector, megastructure classifier, geometric anomaly detector | High | 🟡 Heuristic |
 | 🔍 | Gravitational Lensing Analysis | Einstein radius calculation, magnification factor, distortion pattern analysis | Medium | ✅ Stable |
 | 📊 | Structured Reporting | JSON results, Markdown reports, summary statistics per run | High | ✅ Stable |
 | 🖥️ | CLI & GUI | `cosmic-analyze` CLI for batch runs; PyQt GUI for interactive exploration | Medium | ✅ Stable |
@@ -74,15 +83,49 @@ The system is designed for astrophysicists, SETI researchers, and data scientist
 
 ---
 
+## Detection Algorithms
+
+Four independent, peer-reviewed detection algorithms are implemented in `src/cosmic_anomaly_detector/processing/algorithms.py`. Each targets a distinct physical signature of anomalous structures.
+
+| Algorithm | Class | Physical Basis | Reference |
+|-----------|-------|----------------|-----------|
+| **Starlet Wavelet Detection** | `WaveletSourceDetector` | B3-spline à trous decomposition; local maxima in wavelet planes above σ threshold | Starck & Murtagh 2002 |
+| **Matched Filter Detection** | `MatchedFilterDetector` | Gaussian PSF convolution at multiple FWHM scales; MAD noise estimation; flux-weighted centroid | Turin 1960, IRE Trans. |
+| **IR Excess / SED Fitting** | `IRExcessDetector` | Model star + Dyson sphere blackbody; grid-search γ ∈ [0.01, 0.9] × T_DS ∈ [100, 700 K]; RMSE in log-flux space | Suazo et al. 2024, MNRAS 531, 695 |
+| **Microlensing Anomaly** | `MicrolensingAnomalyDetector` | Paczyński A(u) curve; flags observed/expected magnification ratio > threshold | Paczyński 1986; arXiv:2512.07924 |
+
+```python
+from cosmic_anomaly_detector.processing.algorithms import run_all_algorithms
+import numpy as np
+
+image = np.random.rand(512, 512).astype('float32')  # or load a FITS array
+candidates = run_all_algorithms(image)
+
+for c in candidates:
+    print(f"[{c['algorithm']}] score={c['score']:.3f}  pos={c['coordinates']}")
+```
+
+All algorithms share the `AlgorithmCandidate` result schema which maps directly to the `detected_objects` format used throughout the pipeline — candidates can be merged with standard detections without downstream changes.
+
+<p align="right">(<a href="#top">back to top ↑</a>)</p>
+
+---
+
 ## Architecture
 
 The system is organized into four primary layers: ingestion, processing, analysis, and reporting. Each layer is independently testable and loosely coupled via data-class interfaces.
 
 ```mermaid
 flowchart TD
-    A[JWST FITS Image] --> B[ImageProcessor]
+    A[JWST FITS Image / MAST Download] --> B[ImageProcessor]
     B --> C[Preprocessing & Noise Reduction]
     C --> D[Object Detection]
+    C --> W[algorithms.py]
+    W --> W1[WaveletSourceDetector]
+    W --> W2[MatchedFilterDetector]
+    W --> W3[IRExcessDetector]
+    W --> W4[MicrolensingAnomalyDetector]
+    W1 & W2 & W3 & W4 --> D
     D --> E{Analysis Pipeline}
     E --> F[OrbitalMechanicsCalculator]
     E --> G[MassEstimator]
@@ -104,6 +147,11 @@ flowchart TD
 | Component | Module | Role |
 |-----------|--------|------|
 | `ImageProcessor` | `processing/image_processor.py` | FITS ingestion, noise reduction, object segmentation |
+| `WaveletSourceDetector` | `processing/algorithms.py` | Starlet à trous multi-scale source detection |
+| `MatchedFilterDetector` | `processing/algorithms.py` | Optimal Gaussian PSF matched filter |
+| `IRExcessDetector` | `processing/algorithms.py` | Dyson sphere SED fitting (Suazo et al. 2024) |
+| `MicrolensingAnomalyDetector` | `processing/algorithms.py` | Paczyński magnification anomaly detection |
+| `JWSTDataFetcher` | `utils/jwst_access.py` | MAST archive search and FITS download via astroquery |
 | `OrbitalMechanicsCalculator` | `core/analyzer.py` | Orbital parameter derivation, Kepler validation |
 | `MassEstimator` | `core/analyzer.py` | Mass estimation via photometry and dynamics |
 | `GravitationalAnalyzer` | `core/analyzer.py` | Aggregates gravitational anomaly scores |
@@ -158,10 +206,10 @@ pie title Anomaly Classification Targets
 
 | Category | Detector Model | Key Signal | False Positive Risk |
 |----------|---------------|------------|---------------------|
-| Dyson Sphere | `dyson_sphere_detector` | Infrared excess + orbital compliance failure | Low |
-| Megastructure | `megastructure_classifier` | Geometric regularity + mass anomaly | Medium |
-| Gravity Violation | `OrbitalMechanicsCalculator` | Kepler deviation > tolerance threshold | Low |
-| Geometric Anomaly | `geometric_anomaly_detector` | Non-natural shape signatures | Medium |
+| Dyson Sphere | `IRExcessDetector` + `dyson_sphere_detector` | IR excess (γ ≥ 0.05) + orbital compliance failure | Low |
+| Megastructure | `megastructure_classifier` + `WaveletSourceDetector` | Geometric regularity + multi-scale source profile | Medium |
+| Gravity Violation | `OrbitalMechanicsCalculator` + `MicrolensingAnomalyDetector` | Kepler deviation > threshold; magnification ratio anomaly | Low |
+| Geometric Anomaly | `geometric_anomaly_detector` + `MatchedFilterDetector` | Non-natural shape signatures + SNR-resolved point sources | Medium |
 
 <p align="right">(<a href="#top">back to top ↑</a>)</p>
 
@@ -172,8 +220,9 @@ pie title Anomaly Classification Targets
 | Technology | Purpose | Why Chosen | Alternatives |
 |------------|---------|------------|--------------|
 | Python 3.9+ | Core runtime | Scientific ecosystem maturity | Julia (less tooling) |
-| astropy 6.x | FITS I/O, coordinates, units, WCS | Astronomy standard library | fitsio (no WCS/units) |
-| NumPy / SciPy | Orbital mechanics, matrix ops, optimization | Performance + scientific correctness | PyTorch tensors (overkill) |
+| astropy 7.x | FITS I/O, coordinates, units, WCS | Astronomy standard library | fitsio (no WCS/units) |
+| astroquery 0.4+ | MAST archive access, SIMBAD resolution | Official STScI-supported JWST interface | manual MAST API calls |
+| NumPy / SciPy | Orbital mechanics, wavelet transform, matched filter | Performance + scientific correctness | PyTorch tensors (overkill) |
 | OpenCV / advanced_cv | Object detection, image segmentation | Real-time CV pipelines | scikit-image (slower) |
 | scikit-learn | Baseline ML, ensemble classifiers | Rapid iteration, interpretability | PyTorch (future phase) |
 | PyQt5 / GUI | Interactive exploration interface | Native desktop performance | Electron (heavy) |
@@ -221,7 +270,7 @@ cosmic-analyze --help
 ```
 
 > [!TIP]
-> Copy `.env.example` to `.env` and configure `JWST_API_KEY` if you plan to pull live data from the MAST archive. Local FITS file analysis works without any API key.
+> MAST archive access works without any API key for public data. The `JWSTDataFetcher` in `utils/jwst_access.py` handles authentication automatically for proprietary data if MAST credentials are configured via `~/.astropy/config/astroquery.cfg`.
 
 ### Verify with sample data
 
@@ -279,6 +328,54 @@ print(f"Gravitational analysis: {result.gravitational_analysis}")
 python scripts/batch_analyze.py --input data/jwst_batch/ --output output/batch_001/
 ```
 
+### JWST Live Data
+
+```python
+from cosmic_anomaly_detector.utils.jwst_access import JWSTDataFetcher
+
+fetcher = JWSTDataFetcher(output_dir='data/jwst_downloads', max_products=5)
+
+# Download by well-known target name
+paths = fetcher.search_and_download(
+    target_name="Stephan's Quintet",
+    instrument='NIRCam',
+)
+
+# Download by coordinates
+paths = fetcher.search_and_download(
+    ra_deg=339.0142, dec_deg=33.9656,
+    instrument='MIRI',
+    radius_arcmin=3.0,
+)
+
+# Download by program ID
+paths = fetcher.download_by_program_id(program_id=2731, instrument='NIRCam')
+```
+
+### New Detection Algorithms
+
+```python
+from cosmic_anomaly_detector.processing.algorithms import (
+    WaveletSourceDetector,
+    IRExcessDetector,
+    MicrolensingAnomalyDetector,
+    run_all_algorithms,
+)
+import numpy as np
+
+image = np.load('my_jwst_image.npy')  # 2-D float32, normalised [0,1]
+
+# Run a single algorithm
+wavelet = WaveletSourceDetector(n_scales=4, sigma_threshold=3.5)
+candidates = wavelet.detect(image)
+
+# Or run all four and get a merged list
+all_candidates = run_all_algorithms(image)
+for c in all_candidates:
+    print(f"{c['algorithm']:25s}  score={c['score']:.3f}  "
+          f"pos={c['coordinates']}")
+```
+
 <details>
 <summary>📋 Full CLI Option Reference</summary>
 
@@ -292,6 +389,29 @@ python scripts/batch_analyze.py --input data/jwst_batch/ --output output/batch_0
 | `--output-dir` | `output/runs/` | Base directory for run artifacts |
 
 </details>
+
+<p align="right">(<a href="#top">back to top ↑</a>)</p>
+
+---
+
+## Example Scripts
+
+Ready-to-run examples are in `scripts/examples/`:
+
+| Script | What it demonstrates |
+|--------|----------------------|
+| [01_jwst_data_access.py](scripts/examples/01_jwst_data_access.py) | Query MAST for Stephan's Quintet NIRCam data; run full pipeline; synthetic fallback if offline |
+| [02_ir_excess_detection.py](scripts/examples/02_ir_excess_detection.py) | SED grid-search on a 2-source scene — flags DS candidate (γ=0.31, 637 K) vs normal star |
+| [03_wavelet_detection_demo.py](scripts/examples/03_wavelet_detection_demo.py) | 14-source crowded field comparison: baseline sigma-clipping vs wavelet vs matched filter |
+
+```bash
+# Run any example directly from the project root
+python scripts/examples/02_ir_excess_detection.py
+python scripts/examples/03_wavelet_detection_demo.py
+python scripts/examples/01_jwst_data_access.py   # requires network for MAST download
+```
+
+See [scripts/examples/README.md](scripts/examples/README.md) for full details and algorithm references.
 
 <p align="right">(<a href="#top">back to top ↑</a>)</p>
 
@@ -324,6 +444,25 @@ print(f"Kepler compliance score: {compliance:.3f}")  # 1.0 = perfect
 
 The `LensingAnalyzer` computes Einstein radius, magnification factor, and background source distortion patterns. Anomalous lensing signatures — where observed deflection does not match predicted mass — are flagged as potential indicators of hidden mass concentrations.
 
+### 🌊 Wavelet & Matched-Filter Source Detection
+
+The `WaveletSourceDetector` implements the starlet (isotropic undecimated wavelet) transform via the à trous algorithm. The image is convolved with a B3-spline scaling function at dyadic scales (1, 2, 4, 8 px). Sources appear as local maxima in individual wavelet planes above a sigma-clipped threshold — naturally handling multi-scale source morphology.
+
+The `MatchedFilterDetector` applies the statistically optimal linear filter for a Gaussian PSF in additive white noise at four FWHM scales, using MAD-based noise estimation for robustness against non-Gaussian tails.
+
+### ♨️ IR Excess / Dyson Sphere SED Fitting
+
+The `IRExcessDetector` implements the Suazo et al. 2024 MNRAS methodology:
+- Models each source as star + Dyson sphere blackbody: $F_{\rm total} = F_\star + \gamma \cdot B_\nu(T_{\rm DS})$
+- Grid-searches covering factor $\gamma \in [0.01, 0.9]$ and $T_{\rm DS} \in [100, 700]\,\text{K}$
+- Flags detections where best-fit RMSE < 0.20 in log-flux space and $\gamma \geq 0.05$
+
+### 🌀 Microlensing Magnification Anomaly
+
+The `MicrolensingAnomalyDetector` fits the Paczyński (1986) single-lens magnification curve:
+$$A(u) = \frac{u^2 + 2}{u\,\sqrt{u^2 + 4}}$$
+Sources whose observed magnification significantly exceeds $A(u)$ for the estimated impact parameter $u$ are flagged as candidates for extended or anomalous mass concentrations.
+
 ### 🤖 Ensemble AI Classification
 
 Four specialized models target distinct anomaly classes:
@@ -333,7 +472,7 @@ Four specialized models target distinct anomaly classes:
 
 | Model | Target | Key Features Used |
 |-------|--------|-------------------|
-| `dyson_sphere_detector` | Infrared excess, stellar occlusion patterns | Photometric residuals, IR flux ratio |
+| `dyson_sphere_detector` | Infrared excess, stellar occlusion patterns | Photometric residuals, IR flux ratio, γ score |
 | `megastructure_classifier` | Large-scale geometric regularity | Shape descriptors, spatial frequency |
 | `geometric_anomaly_detector` | Non-natural structural geometry | Symmetry metrics, fractal dimension |
 | `material_composition_analyzer` | Spectral composition vs. natural stellar matter | Spectral index, absorption features |
@@ -394,12 +533,15 @@ gantt
     section Phase 3 — Classification
         Ensemble Classifier Framework       :done,    p3a, 2025-11-01, 2026-01-01
         Reporting & GUI                     :done,    p3b, 2026-01-01, 2026-03-01
-    section Phase 4 — Intelligence
-        Pretrained Model Weights            :active,  p4a, 2026-03-01, 2026-06-01
-        MAST Archive Live Integration       :         p4b, 2026-06-01, 2026-09-01
-    section Phase 5 — Scale
-        Distributed Batch Processing        :         p5a, 2026-09-01, 2026-12-01
-        Community Dataset & Open Release    :         p5b, 2026-12-01, 2027-03-01
+    section Phase 4 — Advanced Algorithms
+        Wavelet / Matched Filter Detection  :done,    p4a, 2026-01-01, 2026-03-01
+        IR Excess SED Fitting (Hephaistos)  :done,    p4b, 2026-01-01, 2026-03-01
+        Microlensing Anomaly Detection      :done,    p4c, 2026-02-01, 2026-04-01
+        MAST Archive Live Integration       :done,    p4d, 2026-03-01, 2026-04-01
+    section Phase 5 — Intelligence
+        Pretrained Model Weights            :active,  p5a, 2026-04-01, 2026-09-01
+        Distributed Batch Processing        :         p5b, 2026-09-01, 2026-12-01
+        Community Dataset & Open Release    :         p5c, 2026-12-01, 2027-03-01
 ```
 
 | Phase | Goals | Target | Status |
@@ -407,8 +549,8 @@ gantt
 | 1 — Foundation | FITS pipeline, gravitational engine | Q3 2025 | ✅ Complete |
 | 2 — Core Detection | Baseline scoring, CLI, run manifest | Q4 2025 | ✅ Complete |
 | 3 — Classification | Ensemble framework, reporting, GUI | Q1 2026 | ✅ Complete |
-| 4 — Intelligence | Pretrained weights, MAST live data | Q2–Q3 2026 | 🟡 In Progress |
-| 5 — Scale | Distributed batch, open release | Q4 2026+ | ⭕ Planned |
+| 4 — Advanced Algorithms | Wavelet, matched filter, IR excess SED, microlensing, MAST live data | Q2 2026 | ✅ Complete |
+| 5 — Intelligence | Pretrained model weights, distributed batch, open release | Q3 2026+ | 🟡 In Progress |
 
 <p align="right">(<a href="#top">back to top ↑</a>)</p>
 
@@ -416,11 +558,11 @@ gantt
 
 ## Development Status
 
-| Version | Stability | Test Coverage | Known Limitations |
-|---------|-----------|---------------|-------------------|
-| 0.3.x (current) | Beta | ≥ 80% gate enforced | ML model weights are stubs; classification uses heuristic ensemble |
-| 0.4.x (planned) | Beta | Target 90% | First pretrained weights, MAST API integration |
-| 1.0.0 (planned) | Stable | Target 95% | Full production release |
+| Version | Stability | Tests | Known Limitations |
+|---------|-----------|-------|-------------------|
+| 0.4.x (current) | Beta | 12/12 passing | ML model weights are heuristic; pretrained weights planned for v0.5 |
+| 0.5.x (planned) | Beta | Target 90% coverage | First pretrained weights; GPU acceleration |
+| 1.0.0 (planned) | Stable | Target 95% coverage | Full production release |
 
 ```mermaid
 mindmap
@@ -429,6 +571,15 @@ mindmap
       FITS Ingestion
       Noise Reduction
       Object Segmentation
+    Detection Algorithms
+      Wavelet Starlet à trous
+      Gaussian Matched Filter
+      IR Excess SED Fitting
+      Microlensing Anomaly
+    JWST Data Access
+      MAST Archive Query
+      Level 2/3 FITS Download
+      7 Notable Targets
     Gravitational Analysis
       Kepler Validation
       Orbital Mechanics
@@ -448,6 +599,7 @@ mindmap
       CLI cosmic-analyze
       Python API
       PyQt GUI
+      Example Scripts
 ```
 
 <p align="right">(<a href="#top">back to top ↑</a>)</p>

@@ -126,10 +126,25 @@ class AnomalyDetector:
         # Step 1: Process the image
         processed_data = self.image_processor.process(image_path)
 
-        # Step 2: Analyze gravitational properties
-        # Gravitational analysis expects detected objects + image; adapt
+        # Step 2: Run new physics-grounded detection algorithms
         detected_objects = processed_data.get('detected_objects', [])
         image_array = processed_data.get('image_array')
+        if image_array is not None:
+            try:
+                from ..processing.algorithms import run_all_algorithms
+                algo_candidates = run_all_algorithms(image_array, detected_objects)
+                # Merge algorithm candidates into detected_objects (deduplicated)
+                existing_ids = {o.get('id') for o in detected_objects}
+                for cand in algo_candidates:
+                    if cand.get('id') not in existing_ids:
+                        detected_objects.append(cand)
+                        existing_ids.add(cand['id'])
+                logger.info("Algorithm candidates added: %d", len(algo_candidates))
+            except Exception as exc:
+                logger.error("Advanced algorithm pass failed: %s", exc)
+
+        # Step 3: Analyze gravitational properties
+        # Gravitational analysis expects detected objects + image; adapt
         gravity_list = []
         if image_array is not None:
             try:
@@ -150,7 +165,7 @@ class AnomalyDetector:
             ]
         }
 
-        # Step 3: Classify structures
+        # Step 4: Classify structures
         classification_results = self.classifier.classify(processed_data)
         # Baseline scoring
         baseline_candidates = []
@@ -167,12 +182,12 @@ class AnomalyDetector:
                     'raw_score': cand['score']
                 })
 
-        # Step 4: Identify anomalies
+        # Step 5: Identify anomalies
         anomalies = self._identify_anomalies(
             processed_data, gravity_results, classification_results
         ) + baseline_candidates
 
-        # Step 5: Calculate confidence scores
+        # Step 6: Calculate confidence scores
         confidence_scores = self._calculate_confidence_scores(anomalies)
 
         result = DetectionResult(
