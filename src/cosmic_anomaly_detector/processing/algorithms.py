@@ -658,6 +658,490 @@ class MicrolensingAnomalyDetector:
 
 
 # ---------------------------------------------------------------------------
+# 5. Multi-Band IR Excess / SED Fitting (genuine photometric)
+# ---------------------------------------------------------------------------
+
+class MultiBandIRExcessDetector:
+    """
+    Genuine multi-band SED fitting for IR excess / Dyson sphere candidates.
+
+    Unlike the single-band spatial-scale proxy (σ=1 vs σ=8 channel ratio),
+    this class uses real inter-band photometric ratios measured across
+    independent JWST filter images.  For each detected source an aperture
+    flux is extracted in every supplied band, then the following model is
+    simultaneously fitted to the full SED:
+
+        F_model(λ) ∝ (1 − γ) · B_ν(T_star, λ)
+                    +      γ  · B_ν(T_DS,  λ)
+
+    The stellar blackbody temperature T_star, Dyson-sphere temperature T_DS,
+    and covering factor γ are found by grid-search minimising RMSE in
+    log₁₀-flux space (equivalent to RMSE in magnitudes — Suazo et al. 2024).
+
+    A source is flagged when the best-fit RMSE < rmse_threshold AND γ > min_gamma.
+
+    Usage
+    -----
+    >>> bands = {1.5: image_f150w, 2.0: image_f200w, 3.6: image_f356w}
+    >>> det = MultiBandIRExcessDetector(bands)
+    >>> candidates = det.detect(detected_objects)
+
+    Reference: Suazo et al. 2024, MNRAS 531, 695 (Project Hephaistos II)
+               arXiv:2405.02927
+    """
+
+    _HC_OVER_KB = 14387.77   # hc / k_B in µm·K
+
+    def __init__(
+        self,
+        bands: Dict[float, np.ndarray],
+        aperture_radius_px: int = 3,
+        ds_temp_range: Tuple[float, float] = (100.0, 700.0),
+        ds_temp_steps: int = 20,
+        star_temp_range: Tuple[float, float] = (3000.0, 30000.0),
+        star_temp_steps: int = 15,
+        gamma_range: Tuple[float, float] = (0.01, 0.90),
+        gamma_steps: int = 20,
+        rmse_threshold: float = 0.15,
+        min_gamma: float = 0.05,
+        min_bands: int = 2,
+    ) -> None:
+        if len(bands) < min_bands:
+            raise ValueError(
+                f"MultiBandIRExcessDetector requires ≥{min_bands} bands, "
+                f"got {len(bands)}."
+            )
+        self.bands = {float(wl): arr for wl, arr in bands.items()}
+        self.wavelengths = sorted(self.bands)
+        self.aperture_radius = aperture_radius_px
+        self.ds_temps = np.linspace(ds_temp_range[0], ds_temp_range[1], ds_temp_steps)
+        self.star_temps = np.linspace(star_temp_range[0], star_temp_range[1], star_temp_steps)
+        self.gammas = np.linspace(gamma_range[0], gamma_range[1], gamma_steps)
+        self.rmse_threshold = rmse_threshold
+        self.min_gamma = min_gamma
+
+    # ── Physics ────────────────────────────────────────────────────────────
+
+    def _planck_bnu(self, wavelength_um: float, temperature_k: float) -> float:
+        """B_ν ∝ ν³/(exp(hν/kT)−1) evaluated at wavelength_um."""
+        if temperature_k <= 0:
+            return 0.0
+        x = self._HC_OVER_KB / (wavelength_um * temperature_k)
+        if x > 700.0:
+            return 0.0
+        return wavelength_um ** (-5.0) / (np.expm1(x) + 1e-300)
+
+    def _model_sed(
+        self, gamma: float, t_star: float, t_ds: float
+    ) -> np.ndarray:
+        """
+        Compute the normalised model SED at all band wavelengths.
+
+        Returns log10 of the model flux vector (length = number of bands),
+        normalised so that the brightest band = 0.
+        """
+        fluxes = np.array([
+            (1.0 - gamma) * self._planck_bnu(wl, t_star)
+            + gamma * self._planck_bnu(wl, t_ds)
+            for wl in self.wavelengths
+        ], dtype=np.float64)
+        if fluxes.max() <= 0:
+            return np.full(len(self.wavelengths), -30.0)
+        fluxes = np.clip(fluxes, 1e-300, None)
+        log_f = np.log10(fluxes)
+        return log_f - log_f.max()   # normalise peak to 0
+
+    # ── Photometry ─────────────────────────────────────────────────────────
+
+    def _aperture_flux(self, image: np.ndarray, r: int, c: int) -> float:
+        """Sum flux in a circular aperture of radius self.aperture_radius."""
+        h, w = image.shape
+        rad = self.aperture_radius
+        r0, r1 = max(0, r - rad), min(h, r + rad + 1)
+        c0, c1 = max(0, c - rad), min(w, c + rad + 1)
+        patch = image[r0:r1, c0:c1]
+        rows_p, cols_p = np.meshgrid(
+            np.arange(r0, r1) - r, np.arange(c0, c1) - c, indexing='ij'
+        )
+        circle = (rows_p ** 2 + cols_p ** 2) <= rad ** 2
+        vals = patch[circle]
+        return float(vals.sum()) if len(vals) else 0.0
+
+    # ── Detection ──────────────────────────────────────────────────────────
+
+    def detect(
+        self,
+        detected_objects: Optional[List[Dict]] = None,
+    ) -> List[AlgorithmCandidate]:
+        """
+        Score each detected object against the multi-band DS SED model.
+
+        Args:
+            detected_objects: list of object dicts with 'coordinates' field.
+
+        Returns:
+            AlgorithmCandidate list for objects with a significant IR excess.
+        """
+        try:
+            return self._detect(detected_objects or [])
+        except Exception as exc:
+            logger.error("MultiBandIRExcessDetector failed: %s", exc)
+            return []
+
+    def _detect(self, detected_objects: List[Dict]) -> List[AlgorithmCandidate]:
+        # Reference image shape from first band
+        ref_image = self.bands[self.wavelengths[0]]
+        h, w = ref_image.shape
+
+        candidates: List[AlgorithmCandidate] = []
+
+        for idx, obj in enumerate(detected_objects):
+            coords = obj.get('coordinates', [0.0, 0.0])
+            r = int(round(float(coords[0])))
+            c = int(round(float(coords[1])))
+            r = max(0, min(r, h - 1))
+            c = max(0, min(c, w - 1))
+
+            # ── Extract multi-band aperture photometry ────────────────────
+            obs_fluxes = np.array([
+                self._aperture_flux(self.bands[wl], r, c)
+                for wl in self.wavelengths
+            ], dtype=np.float64)
+
+            if obs_fluxes.max() <= 0:
+                continue
+            obs_fluxes = np.clip(obs_fluxes, 1e-300, None)
+            log_obs = np.log10(obs_fluxes)
+            log_obs -= log_obs.max()    # normalise peak to 0
+
+            # ── Grid search (gamma, T_star, T_DS) ────────────────────────
+            best_rmse = 1e9
+            best_gamma = 0.0
+            best_t_star = 5778.0
+            best_t_ds = 300.0
+
+            for gamma in self.gammas:
+                for t_star in self.star_temps:
+                    for t_ds in self.ds_temps:
+                        log_model = self._model_sed(gamma, t_star, t_ds)
+                        rmse = float(np.sqrt(np.mean((log_obs - log_model) ** 2)))
+                        if rmse < best_rmse:
+                            best_rmse = rmse
+                            best_gamma = gamma
+                            best_t_star = t_star
+                            best_t_ds = t_ds
+
+            if best_rmse > self.rmse_threshold or best_gamma < self.min_gamma:
+                continue
+
+            score = float(min(1.0, best_gamma * (1.0 - best_rmse / self.rmse_threshold)))
+
+            bb = obj.get('bounding_box', [
+                max(0, r - 5), max(0, c - 5),
+                min(h, r + 6), min(w, c + 6),
+            ])
+            peak_flux = float(np.clip(ref_image[r, c], 0.0, 1.0))
+
+            candidates.append(AlgorithmCandidate(
+                id=f'mb_ir_{idx}_{r}_{c}',
+                algorithm='multiband_ir_excess',
+                anomaly_type='ir_excess_dyson_sphere',
+                coordinates=[float(r), float(c)],
+                bounding_box=bb,
+                brightness=peak_flux,
+                score=score,
+                metadata={
+                    'covering_factor_gamma': best_gamma,
+                    'ds_temperature_k': best_t_ds,
+                    'star_temperature_k': best_t_star,
+                    'sed_rmse_mag': best_rmse,
+                    'n_bands': len(self.wavelengths),
+                    'band_wavelengths_um': self.wavelengths,
+                    'reference': 'Suazo+2024 MNRAS 531 695; arXiv:2405.02927',
+                },
+            ))
+
+        candidates.sort(key=lambda x: x.score, reverse=True)
+        logger.debug("MultiBandIRExcess flagged %d candidates", len(candidates))
+        return candidates
+
+
+# ---------------------------------------------------------------------------
+# 6. Multi-Epoch Microlensing Light-Curve Detector
+# ---------------------------------------------------------------------------
+
+class MultiEpochMicrolensingDetector:
+    """
+    Fit the standard Paczyński (1986) single-lens light curve to multi-epoch
+    photometry and flag events that are anomalous (extended source, binary
+    lens, or magnification excess — consistent with a Dyson sphere or
+    megastructure lens).
+
+    For each epoch a calibrated image is provided alongside its Julian date.
+    The algorithm:
+
+      1. Extracts aperture photometry at each source position in every epoch.
+      2. Builds a light curve F(t) and tests for variability (χ²/dof vs flat).
+      3. Grid-searches Paczyński parameters:
+           u(t) = √(u₀² + ((t − t₀)/tE)²)
+           A(t) = (u² + 2) / (u √(u² + 4))
+           F_model(t) = f_s · A(t) + f_b
+         over (t₀, tE, u₀) with f_s, f_b fitted analytically per grid point.
+      4. Computes:
+           chi2_flat:   χ²/dof of constant-flux model  (detects variability)
+           chi2_paczynski: χ²/dof of best-fit Paczyński (detects lensing fit)
+           delta_chi2:  chi2_flat − chi2_paczynski  (measures lensing signal)
+      5. Anomaly declarations:
+           A.  chi2_paczynski < chi2_threshold AND u₀ < u0_anomaly_threshold:
+               source is *consistent* with lensing of a very compact object
+               (potential megastructure lens).
+           B.  chi2_flat > variability_threshold AND
+               chi2_paczynski > chi2_threshold:
+               source is variable but does NOT follow a single-lens curve —
+               possible binary lens, extended source, or exotic magnification.
+
+    Requires ≥ 3 epochs for meaningful fitting.
+
+    References
+    ----------
+    Paczyński (1986), ApJ 304, 1.
+    Suazo et al. (2024), MNRAS 531, 695.
+    arXiv:2512.07924 — microlensing of Dyson sphere structures.
+    """
+
+    def __init__(
+        self,
+        epochs: List[Tuple[np.ndarray, float]],   # [(image, jd), ...]
+        aperture_radius_px: int = 3,
+        t0_steps: int = 20,
+        te_range_days: Tuple[float, float] = (1.0, 100.0),
+        te_steps: int = 15,
+        u0_range: Tuple[float, float] = (0.01, 1.0),
+        u0_steps: int = 15,
+        variability_threshold: float = 5.0,   # chi2/dof to call source variable
+        chi2_threshold: float = 3.0,           # chi2/dof to call Pac. fit good
+        u0_anomaly_threshold: float = 0.3,     # compact-lens anomaly
+    ) -> None:
+        if len(epochs) < 3:
+            raise ValueError(
+                "MultiEpochMicrolensingDetector requires ≥ 3 epochs, "
+                f"got {len(epochs)}."
+            )
+        # Sort epochs by JD
+        self.epochs: List[Tuple[np.ndarray, float]] = sorted(
+            epochs, key=lambda x: x[1]
+        )
+        self.times = np.array([jd for _, jd in self.epochs], dtype=np.float64)
+        self.aperture_radius = aperture_radius_px
+
+        t_lo, t_hi = self.times[0], self.times[-1]
+        self.t0_values = np.linspace(t_lo, t_hi, t0_steps)
+        self.te_values = np.linspace(te_range_days[0], te_range_days[1], te_steps)
+        self.u0_values = np.linspace(u0_range[0], u0_range[1], u0_steps)
+
+        self.variability_threshold = variability_threshold
+        self.chi2_threshold = chi2_threshold
+        self.u0_anomaly_threshold = u0_anomaly_threshold
+
+    # ── Physics ────────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _paczynski(t: np.ndarray, t0: float, tE: float, u0: float) -> np.ndarray:
+        """Paczyński magnification curve A(t; t0, tE, u0)."""
+        u = np.sqrt(u0 ** 2 + ((t - t0) / tE) ** 2)
+        u = np.maximum(u, 1e-6)
+        return (u ** 2 + 2.0) / (u * np.sqrt(u ** 2 + 4.0))
+
+    # ── Photometry ─────────────────────────────────────────────────────────
+
+    def _aperture_flux(self, image: np.ndarray, r: int, c: int) -> float:
+        """Circular aperture sum centred at (r, c)."""
+        h, w = image.shape
+        rad = self.aperture_radius
+        r0, r1 = max(0, r - rad), min(h, r + rad + 1)
+        c0, c1 = max(0, c - rad), min(w, c + rad + 1)
+        patch = image[r0:r1, c0:c1]
+        ri, ci = np.meshgrid(
+            np.arange(r0, r1) - r, np.arange(c0, c1) - c, indexing='ij'
+        )
+        circle = (ri ** 2 + ci ** 2) <= rad ** 2
+        vals = patch[circle]
+        return float(vals.sum()) if len(vals) else 0.0
+
+    # ── chi² helpers ──────────────────────────────────────────────────────
+
+    @staticmethod
+    def _chi2_flat(fluxes: np.ndarray, errors: np.ndarray) -> float:
+        """χ²/dof of the constant (weighted-mean) model."""
+        w = 1.0 / np.maximum(errors ** 2, 1e-30)
+        f_mean = np.sum(w * fluxes) / np.sum(w)
+        chi2 = np.sum(w * (fluxes - f_mean) ** 2)
+        dof = max(len(fluxes) - 1, 1)
+        return float(chi2 / dof)
+
+    @staticmethod
+    def _fit_linear(A_curve: np.ndarray, fluxes: np.ndarray,
+                    errors: np.ndarray) -> Tuple[float, float, float]:
+        """
+        Analytically fit f_s and f_b in F_model = f_s * A + f_b (least squares).
+        Returns (f_s, f_b, chi2/dof).
+        """
+        w = 1.0 / np.maximum(errors ** 2, 1e-30)
+        sw = np.sum(w)
+        sA = np.sum(w * A_curve)
+        sA2 = np.sum(w * A_curve ** 2)
+        sF = np.sum(w * fluxes)
+        sAF = np.sum(w * A_curve * fluxes)
+        denom = sw * sA2 - sA ** 2
+        if abs(denom) < 1e-30:
+            return 0.0, float(sF / sw), 1e9
+        f_s = (sw * sAF - sA * sF) / denom
+        f_b = (sF - f_s * sA) / sw
+        residuals = fluxes - (f_s * A_curve + f_b)
+        chi2 = float(np.sum(w * residuals ** 2))
+        dof = max(len(fluxes) - 2, 1)
+        return float(f_s), float(f_b), chi2 / dof
+
+    # ── Detection ──────────────────────────────────────────────────────────
+
+    def detect(
+        self,
+        detected_objects: Optional[List[Dict]] = None,
+    ) -> List[AlgorithmCandidate]:
+        """
+        Fit Paczyński light curves at each detected object's position.
+
+        Args:
+            detected_objects: object dicts with 'coordinates' field.
+
+        Returns:
+            AlgorithmCandidate list for objects with lensing-like or
+            anomalous light curves.
+        """
+        try:
+            return self._detect(detected_objects or [])
+        except Exception as exc:
+            logger.error("MultiEpochMicrolensingDetector failed: %s", exc)
+            return []
+
+    def _detect(self, detected_objects: List[Dict]) -> List[AlgorithmCandidate]:
+        ref_image = self.epochs[0][0]
+        h, w = ref_image.shape
+        n_epoch = len(self.epochs)
+
+        candidates: List[AlgorithmCandidate] = []
+
+        for idx, obj in enumerate(detected_objects):
+            coords = obj.get('coordinates', [0.0, 0.0])
+            r = int(round(float(coords[0])))
+            c = int(round(float(coords[1])))
+            r = max(0, min(r, h - 1))
+            c = max(0, min(c, w - 1))
+
+            # ── Build light curve ─────────────────────────────────────────
+            fluxes = np.array([
+                self._aperture_flux(img, r, c)
+                for img, _ in self.epochs
+            ], dtype=np.float64)
+
+            # Photon-noise error estimate (Poisson + readnoise floor)
+            errors = np.sqrt(np.maximum(fluxes, 0.0)) + 1e-6
+
+            if fluxes.mean() < 1e-10:
+                continue
+
+            # ── Variability test ──────────────────────────────────────────
+            chi2_flat = self._chi2_flat(fluxes, errors)
+            if chi2_flat < self.variability_threshold:
+                continue   # source is not significantly variable
+
+            # ── Paczyński grid search ─────────────────────────────────────
+            best_chi2_pac = 1e9
+            best_t0 = self.times.mean()
+            best_te = 20.0
+            best_u0 = 0.5
+            best_fs = 0.0
+            best_fb = 0.0
+
+            for t0 in self.t0_values:
+                for tE in self.te_values:
+                    for u0 in self.u0_values:
+                        A_curve = self._paczynski(self.times, t0, tE, u0)
+                        f_s, f_b, chi2_pac = self._fit_linear(
+                            A_curve, fluxes, errors
+                        )
+                        if chi2_pac < best_chi2_pac:
+                            best_chi2_pac = chi2_pac
+                            best_t0, best_te, best_u0 = t0, tE, u0
+                            best_fs, best_fb = f_s, f_b
+
+            # ── Anomaly classification ────────────────────────────────────
+            delta_chi2 = chi2_flat - best_chi2_pac
+            is_good_lens = best_chi2_pac < self.chi2_threshold
+            is_anomalous_lens = (
+                chi2_flat > self.variability_threshold
+                and best_chi2_pac > self.chi2_threshold
+            )
+            is_compact_lens = (
+                is_good_lens and best_u0 < self.u0_anomaly_threshold
+            )
+
+            if not (is_good_lens or is_anomalous_lens):
+                continue
+
+            # A_max at minimum impact parameter
+            a_max = float(self._paczynski(
+                np.array([best_t0]), best_t0, best_te, best_u0
+            )[0])
+
+            anomaly_type = (
+                'microlensing_compact_lens' if is_compact_lens
+                else 'microlensing_anomalous_variability' if is_anomalous_lens
+                else 'microlensing_event'
+            )
+
+            # Score: higher for more variable + better lensing fit + compact u0
+            score = float(min(1.0, (
+                0.4 * min(delta_chi2 / 50.0, 1.0) +
+                0.4 * max(0.0, 1.0 - best_chi2_pac / self.chi2_threshold) +
+                0.2 * max(0.0, 1.0 - best_u0 / self.u0_anomaly_threshold)
+            )))
+
+            bb = [max(0, r - 5), max(0, c - 5),
+                  min(h, r + 6), min(w, c + 6)]
+            peak_flux = float(np.clip(fluxes.max() / max(fluxes.max(), 1e-9), 0.0, 1.0))
+
+            candidates.append(AlgorithmCandidate(
+                id=f'me_ul_{idx}_{r}_{c}',
+                algorithm='multiepoch_microlensing',
+                anomaly_type=anomaly_type,
+                coordinates=[float(r), float(c)],
+                bounding_box=bb,
+                brightness=peak_flux,
+                score=score,
+                metadata={
+                    't0_best_jd': best_t0,
+                    'te_best_days': best_te,
+                    'u0_best': best_u0,
+                    'a_max': a_max,
+                    'chi2_flat': chi2_flat,
+                    'chi2_paczynski': best_chi2_pac,
+                    'delta_chi2': delta_chi2,
+                    'n_epochs': n_epoch,
+                    'source_flux': best_fs,
+                    'blend_flux': best_fb,
+                    'is_compact_lens': is_compact_lens,
+                    'is_anomalous': is_anomalous_lens,
+                    'reference': 'Paczynski1986 ApJ304; arXiv:2512.07924',
+                },
+            ))
+
+        candidates.sort(key=lambda x: x.score, reverse=True)
+        logger.debug("MultiEpochMicrolensing found %d candidates", len(candidates))
+        return candidates
+
+
+# ---------------------------------------------------------------------------
 # Convenience: run all four algorithms and merge results
 # ---------------------------------------------------------------------------
 

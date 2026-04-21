@@ -26,6 +26,7 @@
 - [Overview](#overview)
 - [Key Features](#key-features)
 - [Detection Algorithms](#detection-algorithms)
+- [Real JWST Results](#real-jwst-results)
 - [Architecture](#architecture)
 - [Usage Flow](#usage-flow)
 - [Detection Breakdown](#detection-breakdown)
@@ -62,8 +63,8 @@ The system is designed for astrophysicists, SETI researchers, and data scientist
 | ⚖️ | Gravitational Validation | Kepler's law compliance scoring, orbital mechanics analysis, mass anomaly detection | High | ✅ Stable |
 | 🌊 | Wavelet Source Detection | Starlet (isotropic undecimated wavelet) à trous decomposition — recovers faint sources missed by sigma-clipping | High | ✅ Stable |
 | 🎯 | Matched Filter Detection | Statistically optimal Gaussian PSF matched filter at multiple FWHM scales; MAD noise estimate | High | ✅ Stable |
-| ♨️ | IR Excess / Dyson Sphere SED | Grid-search covering factor γ and DS temperature following Suazo et al. 2024 (MNRAS 531, 695) | High | ✅ Stable |
-| 🌀 | Microlensing Anomaly | Paczyński (1986) magnification curve — flags flux profiles inconsistent with point-lens models | Medium | ✅ Stable |
+| ♨️ | Multi-Band IR Excess / Dyson Sphere SED | Genuine aperture photometry across ≥2 JWST bands; joint (T★, T_DS, γ) SED grid-search in log-flux space | High | ✅ Stable |
+| 🌀 | Multi-Epoch Microlensing | Paczyński (1986) χ² light-curve fitting across time-ordered epoch images; flags compact-lens & anomalous variability | High | ✅ Stable |
 | 🛰️ | JWST Live Data Access | `JWSTDataFetcher` queries MAST via astroquery, downloads calibrated Level 2/3 FITS products | High | ✅ Stable |
 | 🤖 | Ensemble Classifier | Multi-model AI stack: Dyson sphere detector, megastructure classifier, geometric anomaly detector | High | 🟡 Heuristic |
 | 🔍 | Gravitational Lensing Analysis | Einstein radius calculation, magnification factor, distortion pattern analysis | Medium | ✅ Stable |
@@ -89,10 +90,10 @@ Four independent, peer-reviewed detection algorithms are implemented in `src/cos
 
 | Algorithm | Class | Physical Basis | Reference |
 |-----------|-------|----------------|-----------|
-| **Starlet Wavelet Detection** | `WaveletSourceDetector` | B3-spline à trous decomposition; local maxima in wavelet planes above σ threshold | Starck & Murtagh 2002 |
+| **Starlet Wavelet Detection** | `WaveletSourceDetector` | B3-spline à trous decomposition across 4 dyadic scales; local maxima above MAD-σ threshold | Starck & Murtagh 2002 |
 | **Matched Filter Detection** | `MatchedFilterDetector` | Gaussian PSF convolution at multiple FWHM scales; MAD noise estimation; flux-weighted centroid | Turin 1960, IRE Trans. |
-| **IR Excess / SED Fitting** | `IRExcessDetector` | Model star + Dyson sphere blackbody; grid-search γ ∈ [0.01, 0.9] × T_DS ∈ [100, 700 K]; RMSE in log-flux space | Suazo et al. 2024, MNRAS 531, 695 |
-| **Microlensing Anomaly** | `MicrolensingAnomalyDetector` | Paczyński A(u) curve; flags observed/expected magnification ratio > threshold | Paczyński 1986; arXiv:2512.07924 |
+| **Multi-Band IR Excess** | `MultiBandIRExcessDetector` | Aperture photometry in ≥2 JWST bands; grid-search (γ, T★, T_DS) to fit $F = (1-γ)B_ν(T_\star) + γB_ν(T_{DS})$; RMSE in magnitudes | Suazo et al. 2024, MNRAS 531, 695 |
+| **Multi-Epoch Microlensing** | `MultiEpochMicrolensingDetector` | Paczyński χ² grid-search over (t₀, tE, u₀); flags compact-lens events and anomalous variability | Paczyński 1986 ApJ 304; arXiv:2512.07924 |
 
 ```python
 from cosmic_anomaly_detector.processing.algorithms import run_all_algorithms
@@ -106,6 +107,61 @@ for c in candidates:
 ```
 
 All algorithms share the `AlgorithmCandidate` result schema which maps directly to the `detected_objects` format used throughout the pipeline — candidates can be merged with standard detections without downstream changes.
+
+<p align="right">(<a href="#top">back to top ↑</a>)</p>
+
+---
+
+## Real JWST Results
+
+The pipeline was run against two real JWST Early Release Observation datasets downloaded live from the [MAST archive](https://mast.stsci.edu/). The detection map below shows the three-panel output for SMACS J0723.3-7327 observed with MIRI at 7.7 µm.
+
+![Cosmic Anomaly Detector — SMACS J0723 MIRI F770W detection map](docs/detection_map_smacs0723_miri_f770w.png)
+
+*Left: raw normalised FITS image. Centre: sigma-clipping source catalogue (500 sources, 3σ). Right: multi-algorithm candidates — cyan circles = wavelet, yellow squares = matched filter.*
+
+### SMACS J0723.3-7327 — MIRI/F770W (7.7 µm)
+
+| Property | Value |
+|----------|-------|
+| Program | JWST ERO 02736 (Early Release Observation 10) |
+| Target | SMACS J0723.3-7327 — gravitational lens cluster, z ≈ 0.39 |
+| Instrument / Filter | MIRI / F770W — 7.7 µm mid-infrared |
+| Exposure | 557.8 s |
+| Image size | 1032 × 1024 px · 0.11″/px · 1.9′ × 1.9′ FoV |
+| DQ-masked pixels | 483,790 / 1,056,768 (45.8%) — MIRI detector gaps |
+| **Wavelet detections** | **1,020** sources across 4 spatial scales |
+| **Matched-filter sources** | **216** point sources, peak SNR = 14.7 |
+| Top wavelet source | RA = 110.820°, Dec = −73.465° · score = 0.841 (near cluster core) |
+| Top matched-filter source | RA = 110.853°, Dec = −73.457° · SNR = 14.7 |
+
+### NGC 7320 / Stephan's Quintet — NIRCam/F200W (2.0 µm)
+
+| Property | Value |
+|----------|-------|
+| Program | JWST ERO 02732 (Early Release Observation 6) |
+| Target | NGC 7320 / Stephan's Quintet — compact group of galaxies |
+| Instrument / Filter | NIRCam / F200W — 2.0 µm near-infrared |
+| Exposure | 236.2 s |
+| Image size | 2048 × 2048 px · 0.031″/px · 1.1′ × 1.1′ FoV |
+| DQ-masked pixels | 140,710 / 4,194,304 (3.4%) — very clean detector |
+| **Wavelet detections** | **379** sources, 30 high-confidence (score > 0.3) |
+| Top wavelet source | RA = 338.931°, Dec = 33.967° · score = 0.478 |
+
+### Detection Methodology
+
+**Preprocessing.** Raw Level-2b calibrated FITS (`_cal.fits`) files are loaded from the `SCI` extension (flux in MJy/sr). The `DQ` (data quality) bitmask flags bad pixels (charge migration, saturated, cosmic rays) which are replaced with the science-region median. A 150 px hard-edge exclusion plus 30 px binary erosion produces a `source_mask` that keeps source positions ≥ 180 px from any masked boundary — preventing the IR Gaussian filter from sampling fill values across the detector edge. Flux is normalised to [0, 1] using the 1st–99th percentile of science pixels only.
+
+**Starlet wavelet detection** (`WaveletSourceDetector`). The à trous algorithm convolves the image with a B₃-spline kernel dilated by factors of 1, 2, 4, 8 pixels. Wavelet planes are the difference between consecutive approximations; local maxima above a MAD-σ threshold in each plane correspond to sources at that spatial scale. The approach is scale-adaptive — compact point sources appear at scale j=0, extended galaxies at j=2–3 — and naturally rejects large-scale background gradients.
+
+**Matched-filter detection** (`MatchedFilterDetector`). A Gaussian PSF model is convolved with the background-subtracted image at FWHM = 2–6 px. The peak SNR map is thresholded at 6σ (MAD-estimated noise). Flux-weighted centroids are computed for each connected region. Deduplication prevents the same source appearing at multiple FWHM scales. This is the statistically optimal linear estimator for a known PSF in stationary Gaussian noise (Turin 1960).
+
+**Multi-band IR excess** (`MultiBandIRExcessDetector`). Requires ≥ 2 independent JWST band images covering optical and mid-IR wavelengths. Circular aperture photometry (radius 3 px) is extracted at each source position in every band. A joint SED model $F_\lambda = (1-\gamma)\,B_\nu(T_\star,\lambda) + \gamma\,B_\nu(T_{DS},\lambda)$ is fitted via grid-search over stellar temperature T★ ∈ [3000, 30000 K], Dyson-sphere temperature T_DS ∈ [100, 700 K], and covering factor γ ∈ [0.01, 0.9]. The fit quality is measured as RMSE in log₁₀-flux space (equivalent to RMSE in magnitudes). Sources with RMSE < 0.15 mag and γ > 0.05 are flagged — following the Project Hephaistos methodology (Suazo et al. 2024, MNRAS 531, 695).
+
+**Multi-epoch microlensing** (`MultiEpochMicrolensingDetector`). Accepts a time-ordered list of (image, JD) tuples (minimum 3 epochs). Aperture photometry at each source position builds a light curve F(t). A variability test (χ²/dof vs flat model) gates further analysis. The standard Paczyński (1986) single-lens curve $A(t) = (u^2+2)\,(u\sqrt{u^2+4})^{-1}$ with $u(t)=\sqrt{u_0^2+((t-t_0)/t_E)^2}$ is fitted by grid-searching (t₀, tE, u₀) with f_source and f_blend solved analytically per grid point (weighted least squares). Two anomaly classes are declared: (A) *compact lens* — the Paczyński fit is good and u₀ < 0.3 θ_E (requires a very compact, dense lens); (B) *anomalous variability* — the source is variable but the Paczyński model does not fit (binary lens, extended source, or exotic magnification).
+
+> [!NOTE]
+> Results from a single FITS frame (single-band, single-epoch) are used to demonstrate wavelet and matched-filter performance. The multi-band IR excess and multi-epoch microlensing detectors require genuine multi-band or time-series JWST data respectively — run `scripts/analyze_real_jwst.py --fits <path>` against your own FITS files.
 
 <p align="right">(<a href="#top">back to top ↑</a>)</p>
 
@@ -450,18 +506,77 @@ The `WaveletSourceDetector` implements the starlet (isotropic undecimated wavele
 
 The `MatchedFilterDetector` applies the statistically optimal linear filter for a Gaussian PSF in additive white noise at four FWHM scales, using MAD-based noise estimation for robustness against non-Gaussian tails.
 
-### ♨️ IR Excess / Dyson Sphere SED Fitting
+### ♨️ Multi-Band IR Excess / Dyson Sphere SED Fitting
 
-The `IRExcessDetector` implements the Suazo et al. 2024 MNRAS methodology:
-- Models each source as star + Dyson sphere blackbody: $F_{\rm total} = F_\star + \gamma \cdot B_\nu(T_{\rm DS})$
-- Grid-searches covering factor $\gamma \in [0.01, 0.9]$ and $T_{\rm DS} \in [100, 700]\,\text{K}$
-- Flags detections where best-fit RMSE < 0.20 in log-flux space and $\gamma \geq 0.05$
+The `MultiBandIRExcessDetector` implements genuine multi-band photometric SED fitting following Project Hephaistos (Suazo et al. 2024, MNRAS 531, 695):
 
-### 🌀 Microlensing Magnification Anomaly
+- Extracts circular aperture photometry at each source position in every supplied band
+- Simultaneously fits stellar blackbody + Dyson sphere component:
+  $$F_\lambda = (1-\gamma)\,B_\nu(T_\star,\lambda) + \gamma\,B_\nu(T_{DS},\lambda)$$
+- Grid-searches: $T_\star \in [3000, 30000]\,\text{K}$, $T_{DS} \in [100, 700]\,\text{K}$, $\gamma \in [0.01, 0.9]$
+- Flags detections where best-fit RMSE $< 0.15$ mag and $\gamma \geq 0.05$
 
-The `MicrolensingAnomalyDetector` fits the Paczyński (1986) single-lens magnification curve:
-$$A(u) = \frac{u^2 + 2}{u\,\sqrt{u^2 + 4}}$$
-Sources whose observed magnification significantly exceeds $A(u)$ for the estimated impact parameter $u$ are flagged as candidates for extended or anomalous mass concentrations.
+Unlike a single-band spatial-scale proxy, this uses real inter-band flux ratios — the correct approach for detecting warm dust re-emission characteristic of a Dyson sphere.
+
+```python
+from cosmic_anomaly_detector.processing.algorithms import MultiBandIRExcessDetector
+import numpy as np
+
+# Supply two or more registered JWST band images (same pixel grid)
+bands = {
+    1.5:  image_f150w,   # NIRCam F150W — stellar continuum
+    3.6:  image_f356w,   # NIRCam F356W — warm dust begins
+    12.0: image_miri,    # MIRI F1130W  — DS waste heat peak
+}
+det = MultiBandIRExcessDetector(bands, rmse_threshold=0.15, min_gamma=0.05)
+candidates = det.detect(detected_objects)
+
+for c in candidates:
+    m = c.metadata
+    print(f"pos={c.coordinates}  γ={m['covering_factor_gamma']:.2f}  "
+          f"T_DS={m['ds_temperature_k']:.0f}K  "
+          f"T★={m['star_temperature_k']:.0f}K  "
+          f"RMSE={m['sed_rmse_mag']:.3f} mag")
+```
+
+### 🌀 Multi-Epoch Microlensing Anomaly Detection
+
+The `MultiEpochMicrolensingDetector` fits the Paczyński (1986) single-lens light curve to aperture photometry extracted from a time series of JWST images:
+
+$$A(t) = \frac{u(t)^2 + 2}{u(t)\,\sqrt{u(t)^2 + 4}}, \quad u(t) = \sqrt{u_0^2 + \left(\frac{t - t_0}{t_E}\right)^2}$$
+
+Parameters (t₀, tE, u₀) are found by grid-search; f_source and f_blend are solved analytically per grid point. Two anomaly categories are declared:
+
+| Category | Condition | Interpretation |
+|----------|-----------|----------------|
+| **Compact lens** | Good Paczyński fit + u₀ < 0.3θ_E | Very dense compact lens — consistent with a megastructure or black hole |
+| **Anomalous variability** | Variable source + poor Paczyński fit | Binary lens, extended emission, or exotic magnification |
+
+```python
+from cosmic_anomaly_detector.processing.algorithms import MultiEpochMicrolensingDetector
+
+# epochs: list of (calibrated_image_array, julian_date) tuples, sorted by time
+epochs = [
+    (image_epoch1, 2460000.0),
+    (image_epoch2, 2460010.0),
+    (image_epoch3, 2460020.0),
+    # ... more epochs
+]
+det = MultiEpochMicrolensingDetector(
+    epochs,
+    variability_threshold=5.0,   # chi2/dof to call source variable
+    chi2_threshold=3.0,           # chi2/dof for good Paczynski fit
+    u0_anomaly_threshold=0.3,    # compact-lens flag threshold
+)
+candidates = det.detect(detected_objects)
+
+for c in candidates:
+    m = c.metadata
+    print(f"pos={c.coordinates}  type={c.anomaly_type}  score={c.score:.3f}")
+    print(f"  t0={m['t0_best_jd']:.1f} JD  tE={m['te_best_days']:.1f}d  "
+          f"u0={m['u0_best']:.3f}  A_max={m['a_max']:.2f}")
+    print(f"  chi2_flat={m['chi2_flat']:.1f}  chi2_Pac={m['chi2_paczynski']:.2f}")
+```
 
 ### 🤖 Ensemble AI Classification
 
