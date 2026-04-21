@@ -13,6 +13,33 @@ memory_limit_gb: 8.0
 gpu_enabled: true
 batch_size: 16
 
+# Batch Processing Configuration
+batch_processing:
+  n_workers: 6               # 0 = auto (cpu_count // 2)
+  chunk_size: 4              # Files submitted to each worker at once
+  score_threshold: 0.3       # Minimum anomaly score to report
+  device: auto               # 'auto' | 'cuda' | 'cpu'
+  memory_limit_gb: 0         # Per-worker RSS limit in GB (0 = no limit)
+  save_images: false         # Save annotated PNG for high-score detections
+  sigma_threshold: 4.0       # Source extraction sigma clipping
+
+# GPU Acceleration Configuration
+gpu:
+  device: auto               # 'auto' | 'cuda' | 'cpu'
+  tile_size: 2048            # Max tile size for tiled GPU convolution
+  fallback_to_cpu: true      # Silently fall back to CPU if GPU unavailable
+
+# SETI Catalog Configuration
+seti_catalog:
+  use_breakthrough_listen: true
+  use_hpms_stars: true
+  use_hephaistos_candidates: true
+  max_targets: 100
+  mast_radius_arcmin: 2.0
+  priority_min: medium       # 'high' | 'medium' | 'low'
+  cache_ttl_hours: 24
+  data_dir: data/seti_downloads
+
 # Scientific Settings
 scientific_notation: true
 reproducible_random_seed: 42
