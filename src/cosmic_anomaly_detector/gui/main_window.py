@@ -727,16 +727,48 @@ class CosmicAnomalyDetectorGUI(QMainWindow):
                 self.show_error(f"Failed to save results: {str(e)}")
                 
     def batch_analysis(self):
-        """Start batch analysis of multiple files"""
+        """Start batch analysis of multiple files using the core AnomalyDetector."""
         file_paths, _ = QFileDialog.getOpenFileNames(
             self, "Select FITS Images for Batch Analysis", "",
             "FITS files (*.fits *.fit *.fts);;All files (*)"
         )
-        
-        if file_paths:
-            # TODO: Implement batch analysis worker
-            self.show_info(f"Batch analysis of {len(file_paths)} files "
-                          "will be implemented in future version")
+
+        if not file_paths:
+            return
+
+        from ..core.detector import AnomalyDetector
+
+        detector = AnomalyDetector()
+        total = len(file_paths)
+        self.progress_bar.setVisible(True)
+        self.progress_bar.setValue(0)
+        self.log_message(f"Starting batch analysis of {total} file(s)…")
+
+        results = []
+        for idx, fp in enumerate(file_paths, start=1):
+            self.log_message(f"[{idx}/{total}] Analysing {Path(fp).name}…")
+            try:
+                res = detector.analyze_image(fp)
+                results.append(res)
+            except Exception as exc:
+                self.log_message(f"Error analysing {Path(fp).name}: {exc}")
+            self.progress_bar.setValue(int(idx / total * 100))
+
+        self.progress_bar.setVisible(False)
+        high_conf = sum(
+            len(r.get_high_confidence_anomalies()) for r in results
+        )
+        total_anomalies = sum(len(r.anomalies) for r in results)
+        self.show_info(
+            f"Batch analysis complete!\n\n"
+            f"Files analysed : {len(results)} / {total}\n"
+            f"Total anomalies: {total_anomalies}\n"
+            f"High-confidence: {high_conf}"
+        )
+        self.log_message(
+            f"Batch done — {len(results)} files, "
+            f"{total_anomalies} anomalies, {high_conf} high-confidence"
+        )
             
     def log_message(self, message: str):
         """Add message to log display"""

@@ -537,9 +537,44 @@ class GravitationalAnalyzer:
             {'luminosity': luminosity, 'radius': radius_au}
         )
         
-        # Simplified orbital analysis (would need multi-epoch data for real analysis)
-        kepler_compliance_score = 0.8  # Placeholder - assume mostly compliant
-        orbital_anomaly_score = 0.2   # Placeholder - minor anomalies
+        # ---------------------------------------------------------------------------
+        # Kepler compliance from object's photometric and positional properties.
+        # Single-epoch data constrains only the luminosity and apparent orbital
+        # radius; multi-epoch astrometry would allow a full orbit solution.
+        # For available fields: estimated_mass (M☉), velocity ([vx,vy] AU/yr),
+        # distance (pc), apparent_size (arcsec).
+        #
+        # Physical radius: θ (arcsec) × d (pc) = r (AU)   [small-angle definition]
+        # Kepler period  : T_k = √(a³/M)  years  [a in AU, M in M☉]
+        # Observed period: T_o = 2π·a / |v|   years  [circular orbit approximation]
+        # Compliance      : saturates at 1.0 when |T_o/T_k − 1| ≤ tolerance
+        # ---------------------------------------------------------------------------
+        velocity_vec = np.array(obj.get('velocity', [0.0, 0.0]), dtype=float)
+        velocity_mag = float(np.linalg.norm(velocity_vec))   # AU / year
+        distance_pc = float(obj.get('distance', 1000.0))
+        apparent_size_arcsec = float(obj.get('apparent_size', 1.0))
+        obj_luminosity_raw = float(obj.get('luminosity', intensity))
+
+        # Orbital semi-major axis in AU from angular diameter at known distance
+        orbital_radius_au = max(apparent_size_arcsec * distance_pc, 0.01)
+
+        # Kepler period for a central body of estimated_mass solar masses
+        kepler_period = float(np.sqrt(orbital_radius_au ** 3 / max(estimated_mass, 0.01)))
+
+        if velocity_mag > 1e-6:
+            observed_period = 2.0 * np.pi * orbital_radius_au / velocity_mag
+            period_ratio = observed_period / kepler_period
+            fractional_deviation = abs(1.0 - period_ratio)
+            kepler_tolerance = 0.10   # 10 % tolerance for single-epoch estimate
+            kepler_compliance_score = float(
+                max(0.0, 1.0 - fractional_deviation / kepler_tolerance)
+            )
+            orbital_anomaly_score = float(min(1.0, fractional_deviation))
+        else:
+            # No velocity data available — assume moderate Kepler compliance
+            # with proportional uncertainty
+            kepler_compliance_score = 0.65
+            orbital_anomaly_score = 0.20
         
         # Gravitational lensing analysis
         lensing_signature = self.lensing_detector.detect_lensing_signature(image_data, wcs)

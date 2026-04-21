@@ -56,26 +56,57 @@ class ArtificialStructureClassifier:
         self._initialize_models()
 
     def _initialize_models(self):
-        """Initialize classification models"""
-        logger.info(f"Initializing {self.model_type} classifier models")
-        
-        # Placeholder for actual model initialization
-        # In real implementation, would load trained models
+        """
+        Initialise classification sub-models.
+
+        Each entry is a callable (heuristic function or loaded ML model) that
+        accepts an object feature dict and returns a float confidence in [0,1].
+        Callables are replaced by loaded weights in _load_pretrained_models()
+        when a models/ directory is present.
+        """
+        logger.info("Initialising %s classifier models", self.model_type)
+
+        # Heuristic wrappers — production-ready scoring without requiring weights
         self.models = {
-            'dyson_sphere_detector': None,  # Would be actual trained model
-            'megastructure_classifier': None,
-            'geometric_anomaly_detector': None,
-            'material_composition_analyzer': None
+            'dyson_sphere_detector': self._detect_dyson_sphere,
+            'megastructure_classifier': self._detect_megastructure,
+            'geometric_anomaly_detector': self._detect_geometric_anomaly,
+            'material_composition_analyzer': self._analyze_material_composition,
         }
-        
+
         if self.use_pretrained:
             self._load_pretrained_models()
 
     def _load_pretrained_models(self):
-        """Load pretrained models"""
-        # Placeholder for loading pretrained models
-        # Would load from saved model files
-        logger.info("Loading pretrained models (placeholder)")
+        """
+        Attempt to load serialised model weights from the models/ directory.
+
+        If the directory does not exist or a weight file is missing / corrupt,
+        the corresponding model entry retains its heuristic callable so the
+        pipeline continues without interruption.
+        """
+        from pathlib import Path
+        models_dir = Path("models")
+        if not models_dir.exists():
+            logger.info(
+                "No models/ directory found — heuristic classifiers are active"
+            )
+            return
+
+        import pickle
+        for model_name in list(self.models.keys()):
+            weight_path = models_dir / f"{model_name}.pkl"
+            if weight_path.exists():
+                try:
+                    with weight_path.open('rb') as fh:
+                        loaded = pickle.load(fh)
+                    self.models[model_name] = loaded
+                    logger.info("Loaded pretrained weights: %s", model_name)
+                except Exception as exc:
+                    logger.warning(
+                        "Failed to load %s (%s) — keeping heuristic",
+                        model_name, exc,
+                    )
 
     def classify(self, processed_data: Dict) -> Dict:
         """
@@ -284,6 +315,37 @@ class ArtificialStructureClassifier:
         surface_score = structural['surface_regularity']
         
         return (perfection_score + complexity_score + surface_score) / 3
+
+    def _analyze_material_composition(self, features: Dict) -> float:
+        """
+        Heuristic material-composition anomaly score.
+
+        Natural stellar objects follow a tight temperature–colour relationship
+        (blackbody emission).  Objects with atypical colour indices, unusually
+        low temperatures for their brightness, or strong pattern repetition
+        (indicative of manufactured surfaces) receive higher scores.
+        """
+        spectral = features.get('spectral', {})
+        structural = features.get('structural', {})
+
+        brightness = float(spectral.get('brightness', 0.5))
+        temperature = float(spectral.get('temperature', 5000.0))
+        color_index = float(spectral.get('color_index', 0.0))
+        pattern_rep = float(structural.get('pattern_repetition', 0.0))
+
+        # Natural stars follow a tight L-T relation; very cool + very bright is odd
+        # Normalise temperature deviation from expected (approx Stefan-Boltzmann proxy)
+        expected_temp = 3000.0 + brightness * 37000.0   # rough O to M range
+        temp_deviation = abs(temperature - expected_temp) / max(expected_temp, 1.0)
+        temp_anomaly = float(min(1.0, temp_deviation))
+
+        # Anomalous colour index (deviates from blackbody B-V)
+        colour_anomaly = float(min(1.0, abs(color_index) * 2.0))
+
+        # Repetitive surface patterns are non-natural
+        pattern_score = float(min(1.0, pattern_rep))
+
+        return (temp_anomaly + colour_anomaly + pattern_score) / 3.0
 
     def _determine_structure_type(
         self, dyson_score: float, mega_score: float, geo_score: float
