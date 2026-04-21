@@ -1,7 +1,27 @@
 """
-Configuration Management for Cosmic Anomaly Detector
+Configuration Management — Cosmic Anomaly Detector
 
-Handles configuration loading, validation, and management for the system.
+# ---------------------------------------------------------------------------
+# ID: CFG-001
+# Requirement: Provide validated, typed system configuration loaded from YAML
+#              with safe defaults when no config file is present.
+# Purpose: Centralise all tunable parameters so no magic numbers exist in
+#          application logic; enforce invariants at startup.
+# Rationale: A single config object passed through the call chain avoids
+#             implicit global state and makes behaviour reproducible across runs.
+# Inputs:  Optional YAML file path; environment search order when omitted.
+# Outputs: Frozen SystemConfig dataclass accessible via get_config().
+# Preconditions:  YAML file (if present) must be valid UTF-8 YAML.
+# Postconditions: get_config() returns the same instance for the process
+#                 lifetime unless set_config_path() resets it.
+# Assumptions: yaml.safe_load is used — no arbitrary Python execution.
+# Side Effects: May create output/data/temp directories on first validation.
+# Failure Modes: Malformed YAML → warning logged, defaults used.
+# Error Handling: All load errors caught; system falls back to SystemConfig().
+# Constraints: Config must not be mutated after initial load (treat as read-only).
+# Verification: tests/conftest.py constructs SystemConfig for every test run.
+# References: config.yaml schema, pydantic_config.py optional validation layer.
+# ---------------------------------------------------------------------------
 """
 
 import logging
@@ -12,17 +32,7 @@ from typing import Any, Dict, Optional
 
 import yaml
 
-try:  # Optional pydantic validation
-    from .pydantic_config import load_pydantic_config  # type: ignore
-except Exception:  # pragma: no cover
-    load_pydantic_config = None  # type: ignore
-
-try:  # Optional pydantic validation
-    from .pydantic_config import load_pydantic_config  # type: ignore
-except Exception:  # pragma: no cover
-    load_pydantic_config = None  # type: ignore
-
-try:  # Optional pydantic validation
+try:  # Optional pydantic validation layer — graceful fallback when absent
     from .pydantic_config import load_pydantic_config  # type: ignore
 except Exception:  # pragma: no cover
     load_pydantic_config = None  # type: ignore
@@ -155,20 +165,7 @@ class ConfigManager:
             logging.info("No config file found, using default configuration")
             self._config = SystemConfig()
 
-        # Optional: validate via pydantic for stricter checking
-        if load_pydantic_config is not None:
-            try:
-                validated = load_pydantic_config(self.config_path)
-                # Keep original object but copy validated primitive fields
-                self._config = validated
-            except Exception as exc:  # pragma: no cover
-                logging.debug("Pydantic validation skipped: %s", exc)
-        if load_pydantic_config is not None:
-            try:
-                validated = load_pydantic_config(self.config_path)
-                self._config = validated
-            except Exception as exc:  # pragma: no cover
-                logging.debug("Pydantic validation skipped: %s", exc)
+        # Optional: validate via pydantic for stricter type checking
         if load_pydantic_config is not None:
             try:
                 validated = load_pydantic_config(self.config_path)

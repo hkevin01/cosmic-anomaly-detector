@@ -1,8 +1,36 @@
 """
-Advanced Computer Vision Components for Cosmic Anomaly Detection
+Advanced Computer Vision — Cosmic Anomaly Detector
 
-Implements sophisticated noise reduction, object detection, and geometric analysis
-for identifying artificial structures in astronomical images.
+# ---------------------------------------------------------------------------
+# ID: ACV-001
+# Requirement: Provide production-grade noise reduction, object segmentation,
+#              geometric feature extraction, and artificial-probability scoring
+#              for astronomical images using OpenCV and scikit-image.
+# Purpose: Supply the high-fidelity CV layer that feeds detected object
+#          descriptors (regularity, symmetry, edge sharpness) into the AI
+#          classifier for distinguishing natural from artificial structures.
+# Rationale: Bilateral and non-local-means filters are chosen for their
+#             edge-preserving properties — critical for preserving the sharp
+#             geometric boundaries expected of artificial megastructures.
+#             Harris corners + peak detection provide rotation-invariant
+#             keypoints without requiring learned features.
+# Inputs:  image (np.ndarray) — 2-D float or uint8 image in any flux range.
+#          config (Optional[Dict]) — tuning parameters forwarded to get_config().
+# Outputs: Per-object DetectedObject dataclasses and GeometricFeatures dicts;
+#          processed image arrays passed to downstream stages.
+# Preconditions:  OpenCV (cv2) and scikit-image must be installed.
+# Postconditions: All returned images are the same spatial size as input.
+# Assumptions: Input images are single-band (2-D); RGB inputs are reduced
+#              to luminance before CV operations.
+# Side Effects: DEBUG log per filter invocation via get_logger().
+# Failure Modes: cv2 import failure → ImportError at module load (hard dependency).
+# Error Handling: Type normalisation (uint8 ↔ float) handled in every method.
+# Constraints: Bilateral filter d ∈ [5, 15] pixels adaptive to noise level;
+#              non-local-means h=10, templateWindowSize=7, searchWindowSize=21.
+# Verification: Manual visual inspection + regularity_score range checks in tests.
+# References: Tomasi & Manduchi (1998) Bilateral Filtering; Buades et al. (2005)
+#             Non-Local Means; Harris & Stephens (1988) Corner Detector.
+# ---------------------------------------------------------------------------
 """
 
 import logging

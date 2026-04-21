@@ -1,11 +1,38 @@
-"""Command Line Interface for Cosmic Anomaly Detector
+"""
+Command Line Interface — Cosmic Anomaly Detector
 
-Provides entrypoints:
-  cad analyze <path>  - Analyze a FITS image or directory of FITS images
-  cad report <run_id> - Regenerate / display a report for an existing run
-
-Implements a minimal vertical slice: load FITS -> preprocessing -> baseline
-anomaly scoring -> report/manifest creation.
+# ---------------------------------------------------------------------------
+# ID: CLI-001
+# Requirement: Expose a Click-based CLI with an "analyze" subcommand that
+#              accepts a FITS file or directory path, processes all matching
+#              files, and writes results/report/manifest to a timestamped run
+#              directory under output/runs/.
+# Purpose: Allow batch and single-image analysis without writing Python, and
+#          provide a stable interface for scripting and CI integration.
+# Rationale: Click is chosen for its composable command groups, automatic
+#             --help generation, and typed argument validation — reducing the
+#             surface area for invalid input errors.
+# Inputs:  path (Path) — FITS file or directory (must exist).
+#          --recursive / --no-recursive (bool, default True).
+#          --run-id (Optional[str]) — custom run identifier; auto-generated
+#          as YYYYMMDD-HHMMSS-<uuid8> when omitted.
+#          --limit (Optional[int]) — max number of files to process.
+# Outputs: output/runs/<run_id>/results.json — full anomaly data.
+#          output/runs/<run_id>/report.md    — Markdown summary.
+#          output/runs/<run_id>/summary.json — lightweight stats.
+#          output/runs/<run_id>/manifest.json — reproducibility manifest.
+# Preconditions:  path must reference a readable file or directory.
+# Postconditions: run directory created with all four output artefacts.
+# Assumptions: Output root defaults to "output/" relative to CWD.
+# Side Effects: Creates directories and writes files; logs to console + file.
+# Failure Modes: Unreadable path → Click validation error before processing.
+#                Sub-analysis exception → logged per file; run continues.
+# Error Handling: Per-file exceptions are caught and included in results
+#                 as error entries; the run completes rather than aborting.
+# Constraints: Processes files sequentially; parallel mode deferred to Phase 5.
+# Verification: Invoked in tests/test_run_manifest.py via CLI runner.
+# References: Click 8.x; run_manifest.write_manifest; ReportGenerator.
+# ---------------------------------------------------------------------------
 """
 
 from __future__ import annotations

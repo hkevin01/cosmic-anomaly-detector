@@ -1,7 +1,35 @@
 """
-Artificial Structure Classifier
+Artificial Structure Classifier — Cosmic Anomaly Detector
 
-Machine learning models for classifying space objects as natural or artificial
+# ---------------------------------------------------------------------------
+# ID: CLS-001
+# Requirement: Classify each detected object as natural, artificial, or unknown
+#              using an ensemble of four specialised sub-models, and return
+#              a structured classification result with confidence scores.
+# Purpose: Provide the ML-driven differentiation layer between natural
+#          astrophysical objects and candidates for artificial megastructures.
+# Rationale: Ensemble approach with independent sub-models (Dyson sphere,
+#             megastructure, geometric anomaly, material composition) reduces
+#             single-model bias and enables transparent score attribution.
+# Inputs:  processed_data (Dict) — output of ImageProcessor.process() containing
+#          "detected_objects" (List[Dict]) with shape, spectral, and structural fields.
+# Outputs: Dict with keys: "artificial_candidates", "natural_objects",
+#          "unknown_objects" (each List[Dict]), and "classification_metadata" (Dict).
+# Preconditions:  processed_data must contain "detected_objects" key.
+# Postconditions: Every object in detected_objects appears in exactly one
+#                 output list; total counts sum to len(detected_objects).
+# Assumptions: Sub-model weights are stubs in the current phase; heuristic
+#              scoring is used until pretrained weights are available (Phase 4).
+# Side Effects: INFO-level log entry per classify() call.
+# Failure Modes: Missing object fields → _extract_features returns zero defaults;
+#                classification continues with degraded feature set.
+# Error Handling: Individual object failures propagate up — caller must handle.
+# Constraints: confidence_threshold default 0.7; false positive rate minimised
+#              by conservative ensemble aggregation (max of sub-scores).
+# Verification: tests/test_detector.py exercises classify() with synthetic objects.
+# References: Ensemble classification, Dyson sphere IR-excess signature,
+#             megastructure geometric regularity metrics.
+# ---------------------------------------------------------------------------
 """
 
 import logging

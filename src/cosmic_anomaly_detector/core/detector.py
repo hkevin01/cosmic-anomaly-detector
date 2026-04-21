@@ -1,12 +1,38 @@
 """
-Main Anomaly Detector class for analyzing space images
+Anomaly Detector — Cosmic Anomaly Detector
+
+# ---------------------------------------------------------------------------
+# ID: DET-001
+# Requirement: Orchestrate the full detection pipeline from raw image path to
+#              a DetectionResult containing scored, classified anomalies.
+# Purpose: Single entry-point that composes image processing, gravitational
+#          physics validation, ML classification, and baseline scoring so
+#          callers interact with one cohesive interface.
+# Rationale: Facade pattern keeps inter-module dependencies out of the CLI
+#             and GUI layers; each sub-component is independently testable.
+# Inputs:  image_path (str) — absolute or relative path to a FITS/PNG/JPG file.
+# Outputs: DetectionResult dataclass with anomalies list, confidence scores,
+#          gravitational_analysis dict, classification_results dict,
+#          and processing_metadata dict.
+# Preconditions:  image_path must reference a readable file.
+# Postconditions: All four sub-analyses are attempted; partial failures are
+#                 logged and excluded rather than raising to the caller.
+# Assumptions: Sub-components are already initialised by __init__; config dict
+#              keys match the sub-component constructor signatures.
+# Side Effects: Logs INFO events for each analysis stage.
+# Failure Modes: Sub-component exception → logged, stage output is empty dict.
+# Error Handling: analyze_image wraps sub-calls in try/except per stage.
+# Constraints: No GPU requirement; CPU path must complete in < 60 s per image.
+# Verification: tests/test_detector.py covers normal path and empty-object path.
+# References: ImageProcessor (processing/), GravitationalAnalyzer (core/analyzer),
+#             ArtificialStructureClassifier (core/classifier), BaselineAnomalyScorer.
+# ---------------------------------------------------------------------------
 """
 
 import logging
 from dataclasses import dataclass
 from typing import Dict, List, Optional
 
-from ..models.anomaly_models import AnomalyResult  # noqa: F401 (placeholder)
 from ..processing.image_processor import ImageProcessor
 from .analyzer import GravitationalAnalyzer
 from .baseline import BaselineAnomalyScorer

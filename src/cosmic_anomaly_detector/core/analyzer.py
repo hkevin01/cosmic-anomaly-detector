@@ -1,8 +1,40 @@
 """
-Advanced Gravitational Analysis Module
+Gravitational Analysis — Cosmic Anomaly Detector
 
-Implements physics-based validation using orbital mechanics, gravitational lensing,
-and mass estimation to detect anomalies that might indicate artificial structures.
+# ---------------------------------------------------------------------------
+# ID: ANA-001
+# Requirement: Derive orbital parameters from positional/velocity observations,
+#              validate Kepler's third law compliance, estimate object masses via
+#              three independent methods, detect gravitational lensing signatures,
+#              and produce a GravitationalAnomalyResult for every detected object.
+# Purpose: Physics-based validation layer that flags objects whose gravitational
+#          behaviour cannot be explained by known natural processes.
+# Rationale: Machine-learning classifiers alone produce high false-positive rates
+#             on astronomical anomalies; physics validation provides a
+#             complementary, interpretable filter grounded in orbital mechanics.
+# Inputs:  detected_objects (List[Dict]) — output of ImageProcessor.process();
+#          image_data (np.ndarray) — 2-D float array in arbitrary flux units;
+#          wcs (Optional[WCS]) — astropy WCS object for coordinate transforms.
+# Outputs: List[GravitationalAnomalyResult], one entry per input object.
+#          Each result carries kepler_compliance_score, mass_anomaly_score,
+#          lensing_anomaly_score, overall_anomaly_score ∈ [0, 1], and
+#          a human-readable physical_explanation string.
+# Preconditions:  image_data must be 2-D; detected_objects may be empty.
+# Postconditions: Result list length == number of objects successfully analysed;
+#                 objects that raise exceptions are logged and skipped.
+# Assumptions: Orbital parameters are approximated from single-epoch data;
+#              multi-epoch validation is deferred to a future phase.
+#              Distances are in AU, masses in solar masses, velocities in km/s.
+# Side Effects: Emits log_scientific_event entries for audit trail.
+# Failure Modes: Per-object exception → object skipped; analysis continues.
+# Error Handling: Individual object failures are caught inside analyze_physics.
+# Constraints: G constant imported from astropy.constants for SI precision.
+#              Kepler tolerance default 5 % — configurable via config.yaml.
+# Verification: tests/test_gravity_adapter.py validates Kepler compliance for
+#               Earth-like orbit (semi-major axis 1 AU, period 1 year).
+# References: Kepler's Third Law (T² ∝ a³), gravitational lensing formula
+#             (Einstein radius θ_E), mass-luminosity relation for stellar types.
+# ---------------------------------------------------------------------------
 """
 
 import logging
@@ -68,7 +100,7 @@ class OrbitalMechanicsCalculator:
     """Calculates and validates orbital mechanics"""
     
     def __init__(self, config: Optional[Dict] = None):
-        self.config = config or get_config().gravitational_analysis
+        self.config = config if (config is not None and not isinstance(config, dict)) else get_config().gravitational_analysis
         self.G = const.G.to(u.AU**3 / (u.Msun * u.year**2)).value
         self.kepler_tolerance = self.config.kepler_tolerance
         
@@ -199,7 +231,7 @@ class MassEstimator:
     """Estimates masses using various astrophysical methods"""
     
     def __init__(self, config: Optional[Dict] = None):
-        self.config = config or get_config().gravitational_analysis
+        self.config = config if (config is not None and not isinstance(config, dict)) else get_config().gravitational_analysis
         self.mass_estimation_method = self.config.mass_estimation_method
         
     def estimate_mass_from_luminosity(self, luminosity: float,
@@ -305,7 +337,7 @@ class GravitationalLensingDetector:
     """Detects and analyzes gravitational lensing effects"""
     
     def __init__(self, config: Optional[Dict] = None):
-        self.config = config or get_config().gravitational_analysis
+        self.config = config if (config is not None and not isinstance(config, dict)) else get_config().gravitational_analysis
         self.lensing_threshold = self.config.lensing_detection_threshold
         
     def detect_lensing_signature(self, image: np.ndarray,
@@ -446,7 +478,7 @@ class GravitationalAnalyzer:
     """Main gravitational analysis coordinator"""
     
     def __init__(self, config: Optional[Dict] = None):
-        self.config = config or get_config().gravitational_analysis
+        self.config = config if (config is not None and not isinstance(config, dict)) else get_config().gravitational_analysis
         self.orbital_calculator = OrbitalMechanicsCalculator(config)
         self.mass_estimator = MassEstimator(config)
         self.lensing_detector = GravitationalLensingDetector(config)
@@ -613,7 +645,7 @@ class PhysicsValidator:
     """Advanced physics validation using known astronomical objects"""
     
     def __init__(self, config: Optional[Dict] = None):
-        self.config = config or get_config().gravitational_analysis
+        self.config = config if (config is not None and not isinstance(config, dict)) else get_config().gravitational_analysis
         
     def validate_with_known_objects(self, analysis_results: List[GravitationalAnomalyResult],
                                    reference_catalog: Optional[Dict] = None) -> Dict[str, Any]:

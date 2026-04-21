@@ -1,7 +1,33 @@
 """
-Logging Configuration for Cosmic Anomaly Detector
+Logging — Cosmic Anomaly Detector
 
-Provides centralized logging setup with scientific computing best practices.
+# ---------------------------------------------------------------------------
+# ID: LOG-001
+# Requirement: Provide structured, rotating-file logging with separate streams
+#              for console (INFO+), main file (DEBUG+), error file (ERROR+),
+#              and a scientific analysis log (INFO+) for reproducibility.
+# Purpose: Centralise all logging configuration so every module receives a
+#          consistently formatted, context-rich logger without boilerplate.
+# Rationale: Scientific log files are kept separate from application logs to
+#             allow post-run audit of every detection decision without noise
+#             from framework-level debug messages.
+# Inputs:  log_level (str, default "INFO"), log_dir (str, default "logs"),
+#          console_output (bool), file_output (bool), structured_output (bool).
+# Outputs: Configured Python logging hierarchy; log files written to log_dir.
+# Preconditions:  log_dir parent must be writable.
+# Postconditions: Root logger level set; handlers attached exactly once
+#                 (idempotent via self._configured guard).
+# Assumptions: Called once at startup via setup_logging() helper.
+# Side Effects: Creates log directory; opens rotating file handles.
+# Failure Modes: Non-writable log_dir → OSError at handler creation.
+# Error Handling: setup_logging is guarded by _configured flag to prevent
+#                 duplicate handlers on repeated calls.
+# Constraints: Main log rotates at 10 MB (5 backups); error log at 5 MB (3);
+#              scientific log at 20 MB (10 backups).
+# Verification: Logger output verified in integration tests by asserting
+#               log messages appear in captured stdout.
+# References: Python logging.handlers.RotatingFileHandler; JSON structured logs.
+# ---------------------------------------------------------------------------
 """
 
 import json

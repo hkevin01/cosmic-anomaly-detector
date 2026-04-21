@@ -1,7 +1,33 @@
-"""Run manifest writer.
+"""
+Run Manifest — Cosmic Anomaly Detector
 
-Creates a JSON manifest capturing environment + config snapshot for
-reproducibility of each analyze run.
+# ---------------------------------------------------------------------------
+# ID: MAN-001
+# Requirement: Capture a complete, JSON-serialisable snapshot of the runtime
+#              environment and active configuration for every analysis run.
+# Purpose: Enable full scientific reproducibility — given a manifest, any run
+#          can be reconstructed with identical software versions and parameters.
+# Rationale: Reproducibility is a first-class requirement for scientific
+#             software; embedding Python version, platform, and config avoids
+#             "works on my machine" ambiguity in peer review.
+# Inputs:  config (SystemConfig) — active configuration dataclass.
+#          extra (Optional[Dict]) — caller-supplied metadata (e.g., run_id,
+#          file list, timing data).
+# Outputs: build_manifest → Dict (JSON-serialisable).
+#          write_manifest → Path of written .json file.
+# Preconditions:  config sub-components must expose __dict__ (dataclasses do).
+# Postconditions: Manifest file written atomically (write_text is atomic on
+#                 POSIX for sizes < filesystem block size).
+# Assumptions: datetime.utcnow() used for UTC timestamp; caller is responsible
+#              for ensuring path directory exists before calling write_manifest.
+# Side Effects: write_manifest creates a file at path.
+# Failure Modes: Non-serialisable values in extra → TypeError from json.dumps.
+# Error Handling: Callers should validate extra values before passing.
+# Constraints: Manifest size < 1 MB for typical configs; no binary data stored.
+# Verification: tests/test_run_manifest.py asserts timestamp, python, and
+#               config keys are present in the output dict.
+# References: ISO 8601 UTC timestamp format; platform.platform() stdlib.
+# ---------------------------------------------------------------------------
 """
 from __future__ import annotations
 

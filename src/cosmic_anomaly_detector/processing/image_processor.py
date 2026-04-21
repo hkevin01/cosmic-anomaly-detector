@@ -1,7 +1,35 @@
 """
-Image Processing Module
+Image Processor — Cosmic Anomaly Detector
 
-Handles preprocessing of JWST and other space telescope images
+# ---------------------------------------------------------------------------
+# ID: IMG-001
+# Requirement: Ingest a space telescope image file (FITS, PNG, JPG), apply
+#              noise reduction and contrast enhancement, detect objects via
+#              segmentation, and return a normalised processing dict.
+# Purpose: Standardise raw telescope image data into a uniform representation
+#          consumed by the gravitational analyser and AI classifier.
+# Rationale: Centralising all image I/O and preprocessing in one module
+#             isolates instrument-specific format handling from domain logic
+#             and allows easy substitution of processing algorithms.
+# Inputs:  image_path (str) — path to image file; config (Optional[Dict])
+#          controlling noise_reduction (bool), contrast_enhancement (bool),
+#          resolution_threshold (Tuple[int,int]).
+# Outputs: Dict with keys: "image_array" (np.ndarray, float32, [0,1]),
+#          "detected_objects" (List[Dict]), "metadata" (Dict),
+#          "processing_steps" (List[str]).
+# Preconditions:  image_path must reference a readable file.
+# Postconditions: image_array is 3-D (H,W,C); detected_objects is a non-empty
+#                 list (synthetic data used when real loading fails).
+# Assumptions: FITS loading via astropy; PNG/JPG via PIL — both are optional
+#              dependencies; fallback generates deterministic synthetic data.
+# Side Effects: INFO log for each process() call.
+# Failure Modes: Unreadable file → fallback to synthetic 1024×1024 array.
+# Error Handling: _load_image catches I/O exceptions and returns dummy data.
+# Constraints: Resolution normalised to resolution_threshold; currently
+#              returns synthetic objects — real CV integration is Phase 3+.
+# Verification: tests/test_preprocess.py and tests/test_detector.py.
+# References: astropy.io.fits, OpenCV bilateral filter, CLAHE contrast.
+# ---------------------------------------------------------------------------
 """
 
 import logging

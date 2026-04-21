@@ -1,7 +1,34 @@
-"""Reporting utilities for runs.
+"""
+Report Generator — Cosmic Anomaly Detector
 
-Generates Markdown reports summarizing detected anomalies. Future phases will
-add HTML + rich visualization.
+# ---------------------------------------------------------------------------
+# ID: RPT-001
+# Requirement: Generate a human-readable Markdown report and a machine-readable
+#              summary.json for each analysis run, and optionally produce a
+#              thumbnail PNG when matplotlib is available.
+# Purpose: Provide auditable, reproducible output artefacts per run so that
+#          scientists can review findings without executing Python.
+# Rationale: Markdown is readable in all environments (terminal, GitHub, Jupyter);
+#             JSON summary enables dashboard ingestion and trend tracking.
+# Inputs:  run_dir (Path) — writable output directory for this run.
+#          results (List[Dict]) — per-file result dicts each containing "file"
+#          (str) and "anomalies" (List[Dict] with type, severity, description).
+#          cfg (Any) — SystemConfig instance (used for future template rendering).
+# Outputs: report.md written to run_dir; summary.json written to run_dir;
+#          thumbnail.png optionally written when matplotlib is present.
+#          Returns Path to report.md.
+# Preconditions:  run_dir must exist and be writable.
+# Postconditions: report.md and summary.json are always written;
+#                 thumbnail.png written only when matplotlib is importable.
+# Assumptions: results may be empty; anomaly dicts may be missing optional keys.
+# Side Effects: Writes files to disk; no network I/O.
+# Failure Modes: Non-writable run_dir → OSError propagated to caller.
+# Error Handling: Missing dict keys use .get() with safe defaults.
+# Constraints: Markdown table cells are truncated to 120 chars if needed.
+# Verification: tests/test_report.py asserts report.md and summary.json exist
+#               and contain correct anomaly counts after generate_markdown_report().
+# References: GitHub Flavored Markdown pipe tables; matplotlib magma colormap.
+# ---------------------------------------------------------------------------
 """
 from __future__ import annotations
 

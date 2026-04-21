@@ -305,6 +305,18 @@ def assert_confidence_scores_valid(scores: Dict[str, float]) -> None:
         assert 0.0 <= score <= 1.0, f"Invalid confidence score {name}: {score}"
 
 
+def assert_detection_valid(detection: Dict[str, Any]) -> None:
+    """Assert that a detection result has the expected structure"""
+    required_keys = [
+        'detection_id', 'coordinates', 'confidence_scores',
+        'properties', 'metadata'
+    ]
+    for key in required_keys:
+        assert key in detection, f"Missing required key: {key}"
+    assert_coordinates_valid(detection['coordinates'])
+    assert_confidence_scores_valid(detection['confidence_scores'])
+
+
 def assert_scientific_metadata_present(metadata: Dict[str, Any]) -> None:
     """Assert that required scientific metadata is present"""
     required_fields = ['instrument', 'filter', 'processing_time']
