@@ -1148,13 +1148,23 @@ class MultiEpochMicrolensingDetector:
 def run_all_algorithms(
     image: np.ndarray,
     detected_objects: Optional[List[Dict]] = None,
+    extra_bands: Optional[Dict[float, np.ndarray]] = None,
+    epochs: Optional[List[Tuple[np.ndarray, float]]] = None,
 ) -> List[Dict]:
     """
-    Run all four detection algorithms on a 2-D image and return merged results.
+    Run all detection algorithms on a 2-D image and return merged results.
+
+    The four single-image algorithms (wavelet, matched-filter, single-band
+    IR excess, single-epoch microlensing) always run.  Two additional
+    physics-rigorous algorithms run when optional data is provided:
 
     Args:
         image: 2-D (H,W) float32 array normalised to [0,1].
         detected_objects: Pre-detected objects from ImageProcessor (optional).
+        extra_bands: Dict mapping wavelength (µm) → 2-D image array for
+            genuine multi-band IR excess / SED fitting.  Requires ≥ 2 entries.
+        epochs: List of (image_array, julian_date) tuples for multi-epoch
+            Paczyński microlensing light-curve fitting.  Requires ≥ 3 entries.
 
     Returns:
         List of candidate dicts in the detected_objects schema, tagged by
@@ -1168,6 +1178,7 @@ def run_all_algorithms(
     objs = detected_objects or []
     results: List[Dict] = []
 
+    # ── Always-on: single-image algorithms ───────────────────────────────
     for Detector, kwargs in [
         (WaveletSourceDetector, {'n_scales': 4, 'sigma_threshold': 3.5}),
         (MatchedFilterDetector, {'n_scales': 4, 'detection_threshold': 5.0}),
@@ -1179,6 +1190,26 @@ def run_all_algorithms(
         else:
             candidates = Detector(**kwargs).detect(lum)
         results.extend([c.to_dict() for c in candidates])
+
+    # ── Optional: genuine multi-band IR excess (requires ≥2 bands) ───────
+    if extra_bands and len(extra_bands) >= 2:
+        try:
+            mb_det = MultiBandIRExcessDetector(extra_bands)
+            mb_cands = mb_det.detect(objs)
+            results.extend([c.to_dict() for c in mb_cands])
+            logger.info("MultiBandIRExcess: %d candidates", len(mb_cands))
+        except Exception as exc:
+            logger.error("MultiBandIRExcessDetector failed: %s", exc)
+
+    # ── Optional: multi-epoch Paczyński microlensing (requires ≥3 epochs) ─
+    if epochs and len(epochs) >= 3:
+        try:
+            me_det = MultiEpochMicrolensingDetector(epochs)
+            me_cands = me_det.detect(objs)
+            results.extend([c.to_dict() for c in me_cands])
+            logger.info("MultiEpochMicrolensing: %d candidates", len(me_cands))
+        except Exception as exc:
+            logger.error("MultiEpochMicrolensingDetector failed: %s", exc)
 
     logger.info("All algorithms combined: %d candidates", len(results))
     return results

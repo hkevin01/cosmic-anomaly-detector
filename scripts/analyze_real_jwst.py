@@ -257,13 +257,20 @@ def detect_sources(image: np.ndarray, sigma: float = 3.0,
 # Algorithm pipeline
 # ---------------------------------------------------------------------------
 
-def run_algorithms(image: np.ndarray, detected_objects: list) -> list:
-    """Run all four advanced detection algorithms."""
+def run_algorithms(
+    image: np.ndarray,
+    detected_objects: list,
+    bands: dict | None = None,
+    epochs: list | None = None,
+) -> list:
+    """Run all detection algorithms (6 total when multi-band/epoch data supplied)."""
     from cosmic_anomaly_detector.processing.algorithms import (
         WaveletSourceDetector,
         MatchedFilterDetector,
         IRExcessDetector,
         MicrolensingAnomalyDetector,
+        MultiBandIRExcessDetector,
+        MultiEpochMicrolensingDetector,
     )
 
     all_candidates = []
@@ -284,7 +291,7 @@ def run_algorithms(image: np.ndarray, detected_objects: list) -> list:
     logger.info("  Found %d matched-filter candidates  (%.2fs)", len(mc), time.time()-t0)
     all_candidates.extend(mc)
 
-    logger.info("── IR excess / Dyson sphere SED fitting ──")
+    logger.info("── IR excess / SED fitting (single-band spatial proxy) ──")
     t0 = time.time()
     irdet = IRExcessDetector(
         ds_temp_range=(100.0, 700.0), ds_temp_steps=15,
@@ -292,17 +299,48 @@ def run_algorithms(image: np.ndarray, detected_objects: list) -> list:
         rmse_threshold=0.20, min_gamma=0.05,
     )
     ic = irdet.detect(image, detected_objects)
-    logger.info("  Flagged %d IR-excess candidates  (%.2fs)", len(ic), time.time()-t0)
+    logger.info("  Flagged %d IR-excess (proxy) candidates  (%.2fs)", len(ic), time.time()-t0)
     all_candidates.extend(ic)
 
-    logger.info("── Microlensing magnification anomaly ──")
+    logger.info("── Microlensing magnification anomaly (single-epoch) ──")
     t0 = time.time()
     uldet = MicrolensingAnomalyDetector(
         einstein_radius_px=12.0, magnification_threshold=1.5,
     )
     uc = uldet.detect(image, detected_objects)
-    logger.info("  Flagged %d microlensing candidates  (%.2fs)", len(uc), time.time()-t0)
+    logger.info("  Flagged %d single-epoch microlensing candidates  (%.2fs)", len(uc), time.time()-t0)
     all_candidates.extend(uc)
+
+    # ── Multi-band IR excess (genuine photometric SED fitting) ────────────
+    if bands and len(bands) >= 2:
+        logger.info("── Multi-band IR excess / Dyson sphere SED fitting (%d bands) ──",
+                    len(bands))
+        t0 = time.time()
+        try:
+            mb_det = MultiBandIRExcessDetector(bands, rmse_threshold=0.15)
+            mb_c = mb_det.detect(detected_objects)
+            logger.info("  Flagged %d multi-band IR-excess candidates  (%.2fs)",
+                        len(mb_c), time.time()-t0)
+            all_candidates.extend(mb_c)
+        except Exception as exc:
+            logger.warning("  MultiBandIRExcessDetector skipped: %s", exc)
+    else:
+        logger.info("  (Multi-band IR excess skipped — single band only)")
+
+    # ── Multi-epoch Paczyński microlensing ────────────────────────────────
+    if epochs and len(epochs) >= 3:
+        logger.info("── Multi-epoch Paczyński microlensing (%d epochs) ──", len(epochs))
+        t0 = time.time()
+        try:
+            me_det = MultiEpochMicrolensingDetector(epochs)
+            me_c = me_det.detect(detected_objects)
+            logger.info("  Found %d multi-epoch microlensing candidates  (%.2fs)",
+                        len(me_c), time.time()-t0)
+            all_candidates.extend(me_c)
+        except Exception as exc:
+            logger.warning("  MultiEpochMicrolensingDetector skipped: %s", exc)
+    else:
+        logger.info("  (Multi-epoch microlensing skipped — single epoch only)")
 
     return all_candidates
 
@@ -374,10 +412,12 @@ def save_visualization(image: np.ndarray, detected_objects: list,
 
     algo_counts = {}
     colors = {
-        'wavelet_starlet': ('cyan', 'o'),
-        'matched_filter': ('yellow', 's'),
-        'ir_excess_sed': ('red', '*'),
+        'wavelet_starlet':      ('cyan',    'o'),
+        'matched_filter':       ('yellow',  's'),
+        'ir_excess_sed':        ('red',     '*'),
         'microlensing_anomaly': ('magenta', '^'),
+        'multiband_ir_excess':  ('orange',  'D'),
+        'multiepoch_microlensing': ('lime', 'P'),
     }
 
     for cand in algo_candidates:
@@ -423,14 +463,18 @@ def print_report(meta: dict, detected_objects: list,
                  wcs=None) -> dict:
     """Print and save structured analysis report."""
 
-    ir_excess = [c for c in algo_candidates
-                 if c.algorithm == 'ir_excess_sed']
-    microlens = [c for c in algo_candidates
-                 if c.algorithm == 'microlensing_anomaly']
-    wavelet   = [c for c in algo_candidates
-                 if c.algorithm == 'wavelet_starlet']
-    matched   = [c for c in algo_candidates
-                 if c.algorithm == 'matched_filter']
+    ir_excess   = [c for c in algo_candidates
+                   if c.algorithm == 'ir_excess_sed']
+    microlens   = [c for c in algo_candidates
+                   if c.algorithm == 'microlensing_anomaly']
+    mb_ir_excess = [c for c in algo_candidates
+                    if c.algorithm == 'multiband_ir_excess']
+    me_microlens = [c for c in algo_candidates
+                    if c.algorithm == 'multiepoch_microlensing']
+    wavelet     = [c for c in algo_candidates
+                   if c.algorithm == 'wavelet_starlet']
+    matched     = [c for c in algo_candidates
+                   if c.algorithm == 'matched_filter']
 
     top_wavelet = sorted(wavelet, key=lambda c: c.score, reverse=True)
     top_matched = sorted(matched, key=lambda c: c.score, reverse=True)
@@ -467,8 +511,10 @@ def print_report(meta: dict, detected_objects: list,
     print(f'  Sigma-clipping sources     : {len(detected_objects):>5}')
     print(f'  Wavelet candidates         : {len(wavelet):>5}')
     print(f'  Matched-filter candidates  : {len(matched):>5}')
-    print(f'  IR-excess candidates       : {len(ir_excess):>5}  ⚠ single-band proxy only')
-    print(f'  Microlensing candidates    : {len(microlens):>5}')
+    print(f'  IR-excess (proxy)          : {len(ir_excess):>5}  ⚠ single-band proxy')
+    print(f'  Multi-band IR excess (SED) : {len(mb_ir_excess):>5}  ✓ genuine photometry')
+    print(f'  Microlensing (single-epoch): {len(microlens):>5}')
+    print(f'  Microlensing (multi-epoch) : {len(me_microlens):>5}  ✓ Paczyński χ² fitting')
     print(f'  ──────────────────────────────────────────────')
     print(f'  Validated detections       : {len(top_anomalies):>5}  (wavelet + matched, score>0.3)')
     print()
@@ -493,7 +539,7 @@ def print_report(meta: dict, detected_objects: list,
         print()
 
     if microlens:
-        print('  ── MICROLENSING MAGNIFICATION ANOMALIES ──')
+        print('  ── MICROLENSING MAGNIFICATION ANOMALIES (single-epoch) ──')
         ul_sorted = sorted(microlens, key=lambda c: c.score, reverse=True)
         for i, c in enumerate(ul_sorted[:5]):
             m = c.metadata
@@ -502,6 +548,31 @@ def print_report(meta: dict, detected_objects: list,
                   f'  A_obs={m["a_observed"]:.2f}'
                   f'  A_Pacz={m["a_expected_paczynski"]:.2f}'
                   f'  ratio={m["anomaly_ratio"]:.2f}')
+        print()
+
+    if mb_ir_excess:
+        print('  ── MULTI-BAND IR EXCESS / DYSON SPHERE CANDIDATES ──')
+        for i, c in enumerate(mb_ir_excess[:5]):
+            m = c.metadata
+            print(f'    #{i+1:02d}  pos=({c.coordinates[0]:.0f}, {c.coordinates[1]:.0f})'
+                  f'  score={c.score:.3f}'
+                  f'  γ={m["covering_factor_gamma"]:.2f}'
+                  f'  T_DS={m["ds_temperature_k"]:.0f}K'
+                  f'  T★={m["star_temperature_k"]:.0f}K'
+                  f'  RMSE={m["sed_rmse_mag"]:.3f}mag')
+        print()
+
+    if me_microlens:
+        print('  ── MULTI-EPOCH MICROLENSING CANDIDATES (Paczyński χ² fit) ──')
+        for i, c in enumerate(me_microlens[:5]):
+            m = c.metadata
+            print(f'    #{i+1:02d}  pos=({c.coordinates[0]:.0f}, {c.coordinates[1]:.0f})'
+                  f'  score={c.score:.3f}'
+                  f'  type={c.anomaly_type}'
+                  f'  t0={m["t0_best_jd"]:.1f}JD'
+                  f'  tE={m["te_best_days"]:.1f}d'
+                  f'  u0={m["u0_best"]:.3f}'
+                  f'  Δχ²={m["delta_chi2"]:.1f}')
         print()
 
     if top_anomalies:
@@ -520,8 +591,14 @@ def print_report(meta: dict, detected_objects: list,
     print('  Wavelet (starlet à trous) detects compact and extended sources across')
     print('  4 spatial scales. Matched-filter maximizes point-source SNR against')
     print('  a Gaussian PSF model at multiple FWHM values.')
-    print('  ⚠ IR-excess (single-band spatial-scale proxy) and microlensing')
-    print('    (requires temporal baseline) need multi-epoch or multi-band data.')
+    print('  All 6 algorithms are active:')
+    print('    ✓ Wavelet & matched-filter run on every single FITS frame.')
+    print('    ✓ Single-band IR excess (spatial proxy) runs on every frame.')
+    print('    ✓ Single-epoch microlensing (spatial profile) runs on every frame.')
+    print('    ✓ Multi-band IR excess (genuine SED) runs when ≥2 band images supplied.')
+    print('    ✓ Multi-epoch Paczyński fitting runs when ≥3 epoch images supplied.')
+    print('  Pass --bands or --epochs to the script to activate the physics-rigorous')
+    print('  detectors.  See docs/README.md for data preparation instructions.')
     print(sep)
 
     # ── Save JSON results ─────────────────────────────────────────────────
@@ -538,7 +615,9 @@ def print_report(meta: dict, detected_objects: list,
         'sigma_clip_sources': len(detected_objects),
         'algorithm_candidates': len(algo_candidates),
         'ir_excess_candidates': len(ir_excess),
+        'multiband_ir_excess_candidates': len(mb_ir_excess),
         'microlensing_candidates': len(microlens),
+        'multiepoch_microlensing_candidates': len(me_microlens),
         'wavelet_candidates': len(wavelet),
         'matched_filter_candidates': len(matched),
         'high_score_anomalies': len(top_anomalies),

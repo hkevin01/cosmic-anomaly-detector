@@ -111,12 +111,21 @@ class AnomalyDetector:
             }
         }
 
-    def analyze_image(self, image_path: str) -> DetectionResult:
+    def analyze_image(
+        self,
+        image_path: str,
+        extra_bands: Optional[Dict] = None,
+        epochs: Optional[List] = None,
+    ) -> DetectionResult:
         """
-        Analyze a space telescope image for anomalous structures
+        Analyze a space telescope image for anomalous structures.
 
         Args:
             image_path: Path to the image file (FITS, PNG, JPG, etc.)
+            extra_bands: Dict mapping wavelength_um (float) → 2-D image array
+                for genuine multi-band IR excess / SED fitting (≥ 2 required).
+            epochs: List of (image_array, julian_date) tuples for multi-epoch
+                Paczyński microlensing light-curve fitting (≥ 3 required).
 
         Returns:
             DetectionResult containing analysis results
@@ -126,13 +135,18 @@ class AnomalyDetector:
         # Step 1: Process the image
         processed_data = self.image_processor.process(image_path)
 
-        # Step 2: Run new physics-grounded detection algorithms
+        # Step 2: Run all physics-grounded detection algorithms
         detected_objects = processed_data.get('detected_objects', [])
         image_array = processed_data.get('image_array')
         if image_array is not None:
             try:
                 from ..processing.algorithms import run_all_algorithms
-                algo_candidates = run_all_algorithms(image_array, detected_objects)
+                algo_candidates = run_all_algorithms(
+                    image_array,
+                    detected_objects,
+                    extra_bands=extra_bands,
+                    epochs=epochs,
+                )
                 # Merge algorithm candidates into detected_objects (deduplicated)
                 existing_ids = {o.get('id') for o in detected_objects}
                 for cand in algo_candidates:
