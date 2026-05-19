@@ -57,21 +57,21 @@ The system is designed for astrophysicists, SETI researchers, and data scientist
 
 ## Key Features
 
-| Icon | Feature | Description | Impact | Status |
+| <sub>Icon</sub> | <sub>Feature</sub> | <sub>Description</sub> | <sub>Impact</sub> | <sub>Status</sub> |
 |------|---------|-------------|--------|--------|
-| 🔭 | FITS Image Pipeline | Automated ingestion and preprocessing of JWST FITS files using astropy | High | ✅ Stable |
-| ⚖️ | Gravitational Validation | Kepler's law compliance scoring, orbital mechanics analysis, mass anomaly detection | High | ✅ Stable |
-| 🌊 | Wavelet Source Detection | Starlet (isotropic undecimated wavelet) à trous decomposition — recovers faint sources missed by sigma-clipping | High | ✅ Stable |
-| 🎯 | Matched Filter Detection | Statistically optimal Gaussian PSF matched filter at multiple FWHM scales; MAD noise estimate | High | ✅ Stable |
-| ♨️ | Multi-Band IR Excess / Dyson Sphere SED | Genuine aperture photometry across ≥2 JWST bands; joint (T★, T_DS, γ) SED grid-search in log-flux space | High | ✅ Stable |
-| 🌀 | Multi-Epoch Microlensing | Paczyński (1986) χ² light-curve fitting across time-ordered epoch images; flags compact-lens & anomalous variability | High | ✅ Stable |
-| 🛰️ | JWST Live Data Access | `JWSTDataFetcher` queries MAST via astroquery, downloads calibrated Level 2/3 FITS products | High | ✅ Stable |
-| 🤖 | Ensemble Classifier | Multi-model AI stack: Dyson sphere detector, megastructure classifier, geometric anomaly detector | High | 🟡 Heuristic |
-| 🔍 | Gravitational Lensing Analysis | Einstein radius calculation, magnification factor, distortion pattern analysis | Medium | ✅ Stable |
-| 📊 | Structured Reporting | JSON results, Markdown reports, summary statistics per run | High | ✅ Stable |
-| 🖥️ | CLI & GUI | `cosmic-analyze` CLI for batch runs; PyQt GUI for interactive exploration | Medium | ✅ Stable |
-| 🔁 | Batch Processing | Multi-file recursive directory analysis with run manifest tracking | Medium | ✅ Stable |
-| 📋 | Run Manifest | Reproducible run tracking with metadata, timestamps, and output artifacts | Medium | ✅ Stable |
+| <sub>🔭</sub> | <sub>FITS Image Pipeline</sub> | <sub>Automated ingestion and preprocessing of JWST FITS files using astropy</sub> | <sub>High</sub> | <sub>✅ Stable</sub> |
+| <sub>⚖️</sub> | <sub>Gravitational Validation</sub> | <sub>Kepler's law compliance scoring, orbital mechanics analysis, mass anomaly detection</sub> | <sub>High</sub> | <sub>✅ Stable</sub> |
+| <sub>🌊</sub> | <sub>Wavelet Source Detection</sub> | <sub>Starlet (isotropic undecimated wavelet) à trous decomposition — recovers faint sources missed by sigma-clipping</sub> | <sub>High</sub> | <sub>✅ Stable</sub> |
+| <sub>🎯</sub> | <sub>Matched Filter Detection</sub> | <sub>Statistically optimal Gaussian PSF matched filter at multiple FWHM scales; MAD noise estimate</sub> | <sub>High</sub> | <sub>✅ Stable</sub> |
+| <sub>♨️</sub> | <sub>Multi-Band IR Excess / Dyson Sphere SED</sub> | <sub>Genuine aperture photometry across ≥2 JWST bands; joint (T★, T_DS, γ) SED grid-search in log-flux space</sub> | <sub>High</sub> | <sub>✅ Stable</sub> |
+| <sub>🌀</sub> | <sub>Multi-Epoch Microlensing</sub> | <sub>Paczyński (1986) χ² light-curve fitting across time-ordered epoch images; flags compact-lens & anomalous variability</sub> | <sub>High</sub> | <sub>✅ Stable</sub> |
+| <sub>🛰️</sub> | <sub>JWST Live Data Access</sub> | <sub>`JWSTDataFetcher` queries MAST via astroquery, downloads calibrated Level 2/3 FITS products</sub> | <sub>High</sub> | <sub>✅ Stable</sub> |
+| <sub>🤖</sub> | <sub>Ensemble Classifier</sub> | <sub>Multi-model AI stack: Dyson sphere detector, megastructure classifier, geometric anomaly detector</sub> | <sub>High</sub> | <sub>🟡 Heuristic</sub> |
+| <sub>🔍</sub> | <sub>Gravitational Lensing Analysis</sub> | <sub>Einstein radius calculation, magnification factor, distortion pattern analysis</sub> | <sub>Medium</sub> | <sub>✅ Stable</sub> |
+| <sub>📊</sub> | <sub>Structured Reporting</sub> | <sub>JSON results, Markdown reports, summary statistics per run</sub> | <sub>High</sub> | <sub>✅ Stable</sub> |
+| <sub>🖥️</sub> | <sub>CLI & GUI</sub> | <sub>`cosmic-analyze` CLI for batch runs; PyQt GUI for interactive exploration</sub> | <sub>Medium</sub> | <sub>✅ Stable</sub> |
+| <sub>🔁</sub> | <sub>Batch Processing</sub> | <sub>Multi-file recursive directory analysis with run manifest tracking</sub> | <sub>Medium</sub> | <sub>✅ Stable</sub> |
+| <sub>📋</sub> | <sub>Run Manifest</sub> | <sub>Reproducible run tracking with metadata, timestamps, and output artifacts</sub> | <sub>Medium</sub> | <sub>✅ Stable</sub> |
 
 **Highlight capabilities:**
 - Validates orbital physics against Kepler's third law with configurable tolerance thresholds
@@ -88,12 +88,12 @@ The system is designed for astrophysicists, SETI researchers, and data scientist
 
 Four independent, peer-reviewed detection algorithms are implemented in `src/cosmic_anomaly_detector/processing/algorithms.py`. Each targets a distinct physical signature of anomalous structures.
 
-| Algorithm | Class | Physical Basis | Reference |
+| <sub>Algorithm</sub> | <sub>Class</sub> | <sub>Physical Basis</sub> | <sub>Reference</sub> |
 |-----------|-------|----------------|-----------|
-| **Starlet Wavelet Detection** | `WaveletSourceDetector` | B3-spline à trous decomposition across 4 dyadic scales; local maxima above MAD-σ threshold | Starck & Murtagh 2002 |
-| **Matched Filter Detection** | `MatchedFilterDetector` | Gaussian PSF convolution at multiple FWHM scales; MAD noise estimation; flux-weighted centroid | Turin 1960, IRE Trans. |
-| **Multi-Band IR Excess** | `MultiBandIRExcessDetector` | Aperture photometry in ≥2 JWST bands; grid-search (γ, T★, T_DS) to fit $F = (1-γ)B_ν(T_\star) + γB_ν(T_{DS})$; RMSE in magnitudes | Suazo et al. 2024, MNRAS 531, 695 |
-| **Multi-Epoch Microlensing** | `MultiEpochMicrolensingDetector` | Paczyński χ² grid-search over (t₀, tE, u₀); flags compact-lens events and anomalous variability | Paczyński 1986 ApJ 304; arXiv:2512.07924 |
+| <sub>**Starlet Wavelet Detection**</sub> | <sub>`WaveletSourceDetector`</sub> | <sub>B3-spline à trous decomposition across 4 dyadic scales; local maxima above MAD-σ threshold</sub> | <sub>Starck & Murtagh 2002</sub> |
+| <sub>**Matched Filter Detection**</sub> | <sub>`MatchedFilterDetector`</sub> | <sub>Gaussian PSF convolution at multiple FWHM scales; MAD noise estimation; flux-weighted centroid</sub> | <sub>Turin 1960, IRE Trans.</sub> |
+| <sub>**Multi-Band IR Excess**</sub> | <sub>`MultiBandIRExcessDetector`</sub> | <sub>Aperture photometry in ≥2 JWST bands; grid-search (γ, T★, T_DS) to fit $F = (1-γ)B_ν(T_\star) + γB_ν(T_{DS})$; RMSE in magnitudes</sub> | <sub>Suazo et al. 2024, MNRAS 531, 695</sub> |
+| <sub>**Multi-Epoch Microlensing**</sub> | <sub>`MultiEpochMicrolensingDetector`</sub> | <sub>Paczyński χ² grid-search over (t₀, tE, u₀); flags compact-lens events and anomalous variability</sub> | <sub>Paczyński 1986 ApJ 304; arXiv:2512.07924</sub> |
 
 ```python
 from cosmic_anomaly_detector.processing.algorithms import run_all_algorithms
@@ -122,31 +122,31 @@ The pipeline was run against two real JWST Early Release Observation datasets do
 
 ### SMACS J0723.3-7327 — MIRI/F770W (7.7 µm)
 
-| Property | Value |
+| <sub>Property</sub> | <sub>Value</sub> |
 |----------|-------|
-| Program | JWST ERO 02736 (Early Release Observation 10) |
-| Target | SMACS J0723.3-7327 — gravitational lens cluster, z ≈ 0.39 |
-| Instrument / Filter | MIRI / F770W — 7.7 µm mid-infrared |
-| Exposure | 557.8 s |
-| Image size | 1032 × 1024 px · 0.11″/px · 1.9′ × 1.9′ FoV |
-| DQ-masked pixels | 483,790 / 1,056,768 (45.8%) — MIRI detector gaps |
-| **Wavelet detections** | **1,020** sources across 4 spatial scales |
-| **Matched-filter sources** | **216** point sources, peak SNR = 14.7 |
-| Top wavelet source | RA = 110.820°, Dec = −73.465° · score = 0.841 (near cluster core) |
-| Top matched-filter source | RA = 110.853°, Dec = −73.457° · SNR = 14.7 |
+| <sub>Program</sub> | <sub>JWST ERO 02736 (Early Release Observation 10)</sub> |
+| <sub>Target</sub> | <sub>SMACS J0723.3-7327 — gravitational lens cluster, z ≈ 0.39</sub> |
+| <sub>Instrument / Filter</sub> | <sub>MIRI / F770W — 7.7 µm mid-infrared</sub> |
+| <sub>Exposure</sub> | <sub>557.8 s</sub> |
+| <sub>Image size</sub> | <sub>1032 × 1024 px · 0.11″/px · 1.9′ × 1.9′ FoV</sub> |
+| <sub>DQ-masked pixels</sub> | <sub>483,790 / 1,056,768 (45.8%) — MIRI detector gaps</sub> |
+| <sub>**Wavelet detections**</sub> | <sub>**1,020** sources across 4 spatial scales</sub> |
+| <sub>**Matched-filter sources**</sub> | <sub>**216** point sources, peak SNR = 14.7</sub> |
+| <sub>Top wavelet source</sub> | <sub>RA = 110.820°, Dec = −73.465° · score = 0.841 (near cluster core)</sub> |
+| <sub>Top matched-filter source</sub> | <sub>RA = 110.853°, Dec = −73.457° · SNR = 14.7</sub> |
 
 ### NGC 7320 / Stephan's Quintet — NIRCam/F200W (2.0 µm)
 
-| Property | Value |
+| <sub>Property</sub> | <sub>Value</sub> |
 |----------|-------|
-| Program | JWST ERO 02732 (Early Release Observation 6) |
-| Target | NGC 7320 / Stephan's Quintet — compact group of galaxies |
-| Instrument / Filter | NIRCam / F200W — 2.0 µm near-infrared |
-| Exposure | 236.2 s |
-| Image size | 2048 × 2048 px · 0.031″/px · 1.1′ × 1.1′ FoV |
-| DQ-masked pixels | 140,710 / 4,194,304 (3.4%) — very clean detector |
-| **Wavelet detections** | **379** sources, 30 high-confidence (score > 0.3) |
-| Top wavelet source | RA = 338.931°, Dec = 33.967° · score = 0.478 |
+| <sub>Program</sub> | <sub>JWST ERO 02732 (Early Release Observation 6)</sub> |
+| <sub>Target</sub> | <sub>NGC 7320 / Stephan's Quintet — compact group of galaxies</sub> |
+| <sub>Instrument / Filter</sub> | <sub>NIRCam / F200W — 2.0 µm near-infrared</sub> |
+| <sub>Exposure</sub> | <sub>236.2 s</sub> |
+| <sub>Image size</sub> | <sub>2048 × 2048 px · 0.031″/px · 1.1′ × 1.1′ FoV</sub> |
+| <sub>DQ-masked pixels</sub> | <sub>140,710 / 4,194,304 (3.4%) — very clean detector</sub> |
+| <sub>**Wavelet detections**</sub> | <sub>**379** sources, 30 high-confidence (score > 0.3)</sub> |
+| <sub>Top wavelet source</sub> | <sub>RA = 338.931°, Dec = 33.967° · score = 0.478</sub> |
 
 ### Detection Methodology
 
@@ -200,21 +200,21 @@ flowchart TD
 
 **Component responsibilities:**
 
-| Component | Module | Role |
+| <sub>Component</sub> | <sub>Module</sub> | <sub>Role</sub> |
 |-----------|--------|------|
-| `ImageProcessor` | `processing/image_processor.py` | FITS ingestion, noise reduction, object segmentation |
-| `WaveletSourceDetector` | `processing/algorithms.py` | Starlet à trous multi-scale source detection |
-| `MatchedFilterDetector` | `processing/algorithms.py` | Optimal Gaussian PSF matched filter |
-| `IRExcessDetector` | `processing/algorithms.py` | Dyson sphere SED fitting (Suazo et al. 2024) |
-| `MicrolensingAnomalyDetector` | `processing/algorithms.py` | Paczyński magnification anomaly detection |
-| `JWSTDataFetcher` | `utils/jwst_access.py` | MAST archive search and FITS download via astroquery |
-| `OrbitalMechanicsCalculator` | `core/analyzer.py` | Orbital parameter derivation, Kepler validation |
-| `MassEstimator` | `core/analyzer.py` | Mass estimation via photometry and dynamics |
-| `GravitationalAnalyzer` | `core/analyzer.py` | Aggregates gravitational anomaly scores |
-| `BaselineAnomalyScorer` | `core/baseline.py` | Statistical baseline comparison |
-| `ArtificialStructureClassifier` | `core/classifier.py` | Ensemble ML classification (natural vs. artificial) |
-| `AnomalyDetector` | `core/detector.py` | Orchestrates full detection pipeline |
-| `ReportGenerator` | `reporting/report.py` | Structured output generation |
+| <sub>`ImageProcessor`</sub> | <sub>`processing/image_processor.py`</sub> | <sub>FITS ingestion, noise reduction, object segmentation</sub> |
+| <sub>`WaveletSourceDetector`</sub> | <sub>`processing/algorithms.py`</sub> | <sub>Starlet à trous multi-scale source detection</sub> |
+| <sub>`MatchedFilterDetector`</sub> | <sub>`processing/algorithms.py`</sub> | <sub>Optimal Gaussian PSF matched filter</sub> |
+| <sub>`IRExcessDetector`</sub> | <sub>`processing/algorithms.py`</sub> | <sub>Dyson sphere SED fitting (Suazo et al. 2024)</sub> |
+| <sub>`MicrolensingAnomalyDetector`</sub> | <sub>`processing/algorithms.py`</sub> | <sub>Paczyński magnification anomaly detection</sub> |
+| <sub>`JWSTDataFetcher`</sub> | <sub>`utils/jwst_access.py`</sub> | <sub>MAST archive search and FITS download via astroquery</sub> |
+| <sub>`OrbitalMechanicsCalculator`</sub> | <sub>`core/analyzer.py`</sub> | <sub>Orbital parameter derivation, Kepler validation</sub> |
+| <sub>`MassEstimator`</sub> | <sub>`core/analyzer.py`</sub> | <sub>Mass estimation via photometry and dynamics</sub> |
+| <sub>`GravitationalAnalyzer`</sub> | <sub>`core/analyzer.py`</sub> | <sub>Aggregates gravitational anomaly scores</sub> |
+| <sub>`BaselineAnomalyScorer`</sub> | <sub>`core/baseline.py`</sub> | <sub>Statistical baseline comparison</sub> |
+| <sub>`ArtificialStructureClassifier`</sub> | <sub>`core/classifier.py`</sub> | <sub>Ensemble ML classification (natural vs. artificial)</sub> |
+| <sub>`AnomalyDetector`</sub> | <sub>`core/detector.py`</sub> | <sub>Orchestrates full detection pipeline</sub> |
+| <sub>`ReportGenerator`</sub> | <sub>`reporting/report.py`</sub> | <sub>Structured output generation</sub> |
 
 Data flows from raw FITS bytes through physics-validated orbital mechanics, then into the ML classifier. Each stage emits structured dataclasses (`DetectionResult`, `GravitationalAnomalyResult`, `LensingSignature`) so any stage can be tested or replaced independently.
 
@@ -260,12 +260,12 @@ pie title Anomaly Classification Targets
     "Geometric Anomalies" : 15
 ```
 
-| Category | Detector Model | Key Signal | False Positive Risk |
+| <sub>Category</sub> | <sub>Detector Model</sub> | <sub>Key Signal</sub> | <sub>False Positive Risk</sub> |
 |----------|---------------|------------|---------------------|
-| Dyson Sphere | `IRExcessDetector` + `dyson_sphere_detector` | IR excess (γ ≥ 0.05) + orbital compliance failure | Low |
-| Megastructure | `megastructure_classifier` + `WaveletSourceDetector` | Geometric regularity + multi-scale source profile | Medium |
-| Gravity Violation | `OrbitalMechanicsCalculator` + `MicrolensingAnomalyDetector` | Kepler deviation > threshold; magnification ratio anomaly | Low |
-| Geometric Anomaly | `geometric_anomaly_detector` + `MatchedFilterDetector` | Non-natural shape signatures + SNR-resolved point sources | Medium |
+| <sub>Dyson Sphere</sub> | <sub>`IRExcessDetector` + `dyson_sphere_detector`</sub> | <sub>IR excess (γ ≥ 0.05) + orbital compliance failure</sub> | <sub>Low</sub> |
+| <sub>Megastructure</sub> | <sub>`megastructure_classifier` + `WaveletSourceDetector`</sub> | <sub>Geometric regularity + multi-scale source profile</sub> | <sub>Medium</sub> |
+| <sub>Gravity Violation</sub> | <sub>`OrbitalMechanicsCalculator` + `MicrolensingAnomalyDetector`</sub> | <sub>Kepler deviation > threshold; magnification ratio anomaly</sub> | <sub>Low</sub> |
+| <sub>Geometric Anomaly</sub> | <sub>`geometric_anomaly_detector` + `MatchedFilterDetector`</sub> | <sub>Non-natural shape signatures + SNR-resolved point sources</sub> | <sub>Medium</sub> |
 
 <p align="right">(<a href="#top">back to top ↑</a>)</p>
 
@@ -273,17 +273,17 @@ pie title Anomaly Classification Targets
 
 ## Technology Stack
 
-| Technology | Purpose | Why Chosen | Alternatives |
+| <sub>Technology</sub> | <sub>Purpose</sub> | <sub>Why Chosen</sub> | <sub>Alternatives</sub> |
 |------------|---------|------------|--------------|
-| Python 3.9+ | Core runtime | Scientific ecosystem maturity | Julia (less tooling) |
-| astropy 7.x | FITS I/O, coordinates, units, WCS | Astronomy standard library | fitsio (no WCS/units) |
-| astroquery 0.4+ | MAST archive access, SIMBAD resolution | Official STScI-supported JWST interface | manual MAST API calls |
-| NumPy / SciPy | Orbital mechanics, wavelet transform, matched filter | Performance + scientific correctness | PyTorch tensors (overkill) |
-| OpenCV / advanced_cv | Object detection, image segmentation | Real-time CV pipelines | scikit-image (slower) |
-| scikit-learn | Baseline ML, ensemble classifiers | Rapid iteration, interpretability | PyTorch (future phase) |
-| PyQt5 / GUI | Interactive exploration interface | Native desktop performance | Electron (heavy) |
-| Pydantic | Config validation and schema enforcement | Type-safe config at boundaries | dataclasses (no validation) |
-| pytest + coverage | Test suite, 80% coverage gate | CI reproducibility | unittest (verbose) |
+| <sub>Python 3.9+</sub> | <sub>Core runtime</sub> | <sub>Scientific ecosystem maturity</sub> | <sub>Julia (less tooling)</sub> |
+| <sub>astropy 7.x</sub> | <sub>FITS I/O, coordinates, units, WCS</sub> | <sub>Astronomy standard library</sub> | <sub>fitsio (no WCS/units)</sub> |
+| <sub>astroquery 0.4+</sub> | <sub>MAST archive access, SIMBAD resolution</sub> | <sub>Official STScI-supported JWST interface</sub> | <sub>manual MAST API calls</sub> |
+| <sub>NumPy / SciPy</sub> | <sub>Orbital mechanics, wavelet transform, matched filter</sub> | <sub>Performance + scientific correctness</sub> | <sub>PyTorch tensors (overkill)</sub> |
+| <sub>OpenCV / advanced_cv</sub> | <sub>Object detection, image segmentation</sub> | <sub>Real-time CV pipelines</sub> | <sub>scikit-image (slower)</sub> |
+| <sub>scikit-learn</sub> | <sub>Baseline ML, ensemble classifiers</sub> | <sub>Rapid iteration, interpretability</sub> | <sub>PyTorch (future phase)</sub> |
+| <sub>PyQt5 / GUI</sub> | <sub>Interactive exploration interface</sub> | <sub>Native desktop performance</sub> | <sub>Electron (heavy)</sub> |
+| <sub>Pydantic</sub> | <sub>Config validation and schema enforcement</sub> | <sub>Type-safe config at boundaries</sub> | <sub>dataclasses (no validation)</sub> |
+| <sub>pytest + coverage</sub> | <sub>Test suite, 80% coverage gate</sub> | <sub>CI reproducibility</sub> | <sub>unittest (verbose)</sub> |
 
 <p align="right">(<a href="#top">back to top ↑</a>)</p>
 
@@ -358,12 +358,12 @@ Press <kbd>Ctrl</kbd>+<kbd>C</kbd> to gracefully stop a running batch job. The r
 
 **Output artifacts per run** (written to `output/runs/<run_id>/`):
 
-| File | Description |
+| <sub>File</sub> | <sub>Description</sub> |
 |------|-------------|
-| `results.json` | Full structured anomaly data with confidence scores |
-| `report.md` | Markdown summary report for human review |
-| `summary.json` | Lightweight statistics for dashboard ingestion |
-| `thumbnail.png` | Annotated image visualization |
+| <sub>`results.json`</sub> | <sub>Full structured anomaly data with confidence scores</sub> |
+| <sub>`report.md`</sub> | <sub>Markdown summary report for human review</sub> |
+| <sub>`summary.json`</sub> | <sub>Lightweight statistics for dashboard ingestion</sub> |
+| <sub>`thumbnail.png`</sub> | <sub>Annotated image visualization</sub> |
 
 ### Python API
 
@@ -435,14 +435,14 @@ for c in all_candidates:
 <details>
 <summary>📋 Full CLI Option Reference</summary>
 
-| Flag | Default | Description |
+| <sub>Flag</sub> | <sub>Default</sub> | <sub>Description</sub> |
 |------|---------|-------------|
-| `--recursive` | False | Recurse into subdirectories |
-| `--limit N` | None | Max files to process |
-| `--run-id ID` | auto | Custom run identifier |
-| `--config PATH` | `config.yaml` | Path to config override file |
-| `--log-level` | INFO | Logging verbosity (DEBUG/INFO/WARNING) |
-| `--output-dir` | `output/runs/` | Base directory for run artifacts |
+| <sub>`--recursive`</sub> | <sub>False</sub> | <sub>Recurse into subdirectories</sub> |
+| <sub>`--limit N`</sub> | <sub>None</sub> | <sub>Max files to process</sub> |
+| <sub>`--run-id ID`</sub> | <sub>auto</sub> | <sub>Custom run identifier</sub> |
+| <sub>`--config PATH`</sub> | <sub>`config.yaml`</sub> | <sub>Path to config override file</sub> |
+| <sub>`--log-level`</sub> | <sub>INFO</sub> | <sub>Logging verbosity (DEBUG/INFO/WARNING)</sub> |
+| <sub>`--output-dir`</sub> | <sub>`output/runs/`</sub> | <sub>Base directory for run artifacts</sub> |
 
 </details>
 
@@ -454,11 +454,11 @@ for c in all_candidates:
 
 Ready-to-run examples are in `scripts/examples/`:
 
-| Script | What it demonstrates |
+| <sub>Script</sub> | <sub>What it demonstrates</sub> |
 |--------|----------------------|
-| [01_jwst_data_access.py](scripts/examples/01_jwst_data_access.py) | Query MAST for Stephan's Quintet NIRCam data; run full pipeline; synthetic fallback if offline |
-| [02_ir_excess_detection.py](scripts/examples/02_ir_excess_detection.py) | SED grid-search on a 2-source scene — flags DS candidate (γ=0.31, 637 K) vs normal star |
-| [03_wavelet_detection_demo.py](scripts/examples/03_wavelet_detection_demo.py) | 14-source crowded field comparison: baseline sigma-clipping vs wavelet vs matched filter |
+| <sub>[01_jwst_data_access.py](scripts/examples/01_jwst_data_access.py)</sub> | <sub>Query MAST for Stephan's Quintet NIRCam data; run full pipeline; synthetic fallback if offline</sub> |
+| <sub>[02_ir_excess_detection.py](scripts/examples/02_ir_excess_detection.py)</sub> | <sub>SED grid-search on a 2-source scene — flags DS candidate (γ=0.31, 637 K) vs normal star</sub> |
+| <sub>[03_wavelet_detection_demo.py](scripts/examples/03_wavelet_detection_demo.py)</sub> | <sub>14-source crowded field comparison: baseline sigma-clipping vs wavelet vs matched filter</sub> |
 
 ```bash
 # Run any example directly from the project root
@@ -547,10 +547,10 @@ $$A(t) = \frac{u(t)^2 + 2}{u(t)\,\sqrt{u(t)^2 + 4}}, \quad u(t) = \sqrt{u_0^2 + 
 
 Parameters (t₀, tE, u₀) are found by grid-search; f_source and f_blend are solved analytically per grid point. Two anomaly categories are declared:
 
-| Category | Condition | Interpretation |
+| <sub>Category</sub> | <sub>Condition</sub> | <sub>Interpretation</sub> |
 |----------|-----------|----------------|
-| **Compact lens** | Good Paczyński fit + u₀ < 0.3θ_E | Very dense compact lens — consistent with a megastructure or black hole |
-| **Anomalous variability** | Variable source + poor Paczyński fit | Binary lens, extended emission, or exotic magnification |
+| <sub>**Compact lens**</sub> | <sub>Good Paczyński fit + u₀ < 0.3θ_E</sub> | <sub>Very dense compact lens — consistent with a megastructure or black hole</sub> |
+| <sub>**Anomalous variability**</sub> | <sub>Variable source + poor Paczyński fit</sub> | <sub>Binary lens, extended emission, or exotic magnification</sub> |
 
 ```python
 from cosmic_anomaly_detector.processing.algorithms import MultiEpochMicrolensingDetector
@@ -585,12 +585,12 @@ Four specialized models target distinct anomaly classes:
 <details>
 <summary>🤖 Classifier Model Details</summary>
 
-| Model | Target | Key Features Used |
+| <sub>Model</sub> | <sub>Target</sub> | <sub>Key Features Used</sub> |
 |-------|--------|-------------------|
-| `dyson_sphere_detector` | Infrared excess, stellar occlusion patterns | Photometric residuals, IR flux ratio, γ score |
-| `megastructure_classifier` | Large-scale geometric regularity | Shape descriptors, spatial frequency |
-| `geometric_anomaly_detector` | Non-natural structural geometry | Symmetry metrics, fractal dimension |
-| `material_composition_analyzer` | Spectral composition vs. natural stellar matter | Spectral index, absorption features |
+| <sub>`dyson_sphere_detector`</sub> | <sub>Infrared excess, stellar occlusion patterns</sub> | <sub>Photometric residuals, IR flux ratio, γ score</sub> |
+| <sub>`megastructure_classifier`</sub> | <sub>Large-scale geometric regularity</sub> | <sub>Shape descriptors, spatial frequency</sub> |
+| <sub>`geometric_anomaly_detector`</sub> | <sub>Non-natural structural geometry</sub> | <sub>Symmetry metrics, fractal dimension</sub> |
+| <sub>`material_composition_analyzer`</sub> | <sub>Spectral composition vs. natural stellar matter</sub> | <sub>Spectral index, absorption features</sub> |
 
 All models feed into a confidence-weighted ensemble. Only results exceeding the `confidence_threshold` (default: 0.7) are elevated to `DetectionResult.anomalies`.
 
@@ -659,13 +659,13 @@ gantt
         Community Dataset & Open Release    :         p5c, 2026-12-01, 2027-03-01
 ```
 
-| Phase | Goals | Target | Status |
+| <sub>Phase</sub> | <sub>Goals</sub> | <sub>Target</sub> | <sub>Status</sub> |
 |-------|-------|--------|--------|
-| 1 — Foundation | FITS pipeline, gravitational engine | Q3 2025 | ✅ Complete |
-| 2 — Core Detection | Baseline scoring, CLI, run manifest | Q4 2025 | ✅ Complete |
-| 3 — Classification | Ensemble framework, reporting, GUI | Q1 2026 | ✅ Complete |
-| 4 — Advanced Algorithms | Wavelet, matched filter, IR excess SED, microlensing, MAST live data | Q2 2026 | ✅ Complete |
-| 5 — Intelligence | Pretrained model weights, distributed batch, open release | Q3 2026+ | 🟡 In Progress |
+| <sub>1 — Foundation</sub> | <sub>FITS pipeline, gravitational engine</sub> | <sub>Q3 2025</sub> | <sub>✅ Complete</sub> |
+| <sub>2 — Core Detection</sub> | <sub>Baseline scoring, CLI, run manifest</sub> | <sub>Q4 2025</sub> | <sub>✅ Complete</sub> |
+| <sub>3 — Classification</sub> | <sub>Ensemble framework, reporting, GUI</sub> | <sub>Q1 2026</sub> | <sub>✅ Complete</sub> |
+| <sub>4 — Advanced Algorithms</sub> | <sub>Wavelet, matched filter, IR excess SED, microlensing, MAST live data</sub> | <sub>Q2 2026</sub> | <sub>✅ Complete</sub> |
+| <sub>5 — Intelligence</sub> | <sub>Pretrained model weights, distributed batch, open release</sub> | <sub>Q3 2026+</sub> | <sub>🟡 In Progress</sub> |
 
 <p align="right">(<a href="#top">back to top ↑</a>)</p>
 
@@ -673,11 +673,11 @@ gantt
 
 ## Development Status
 
-| Version | Stability | Tests | Known Limitations |
+| <sub>Version</sub> | <sub>Stability</sub> | <sub>Tests</sub> | <sub>Known Limitations</sub> |
 |---------|-----------|-------|-------------------|
-| 0.4.x (current) | Beta | 12/12 passing | ML model weights are heuristic; pretrained weights planned for v0.5 |
-| 0.5.x (planned) | Beta | Target 90% coverage | First pretrained weights; GPU acceleration |
-| 1.0.0 (planned) | Stable | Target 95% coverage | Full production release |
+| <sub>0.4.x (current)</sub> | <sub>Beta</sub> | <sub>12/12 passing</sub> | <sub>ML model weights are heuristic; pretrained weights planned for v0.5</sub> |
+| <sub>0.5.x (planned)</sub> | <sub>Beta</sub> | <sub>Target 90% coverage</sub> | <sub>First pretrained weights; GPU acceleration</sub> |
+| <sub>1.0.0 (planned)</sub> | <sub>Stable</sub> | <sub>Target 95% coverage</sub> | <sub>Full production release</sub> |
 
 ```mermaid
 mindmap
