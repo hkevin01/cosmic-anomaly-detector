@@ -13,14 +13,14 @@ downloads up to 3 calibrated science FITS files, and runs the full anomaly detec
 pipeline. Falls back to a synthetic FITS image if no network is available.
 
 **Targets pre-configured:**
-| Target | Instrument | Program | Description |
+| <sub>Target</sub> | <sub>Instrument</sub> | <sub>Program</sub> | <sub>Description</sub> |
 |--------|-----------|---------|-------------|
-| Stephan's Quintet | NIRCam | 2732 | Compact galaxy group — tidal forces |
-| Carina Nebula | NIRCam | 2731 | Star-forming region |
-| SMACS 0723 | NIRCam | 2736 | First deep field — gravitational lensing |
-| Pillars of Creation | NIRCam | 2739 | Eagle Nebula star-forming pillars |
-| Cartwheel Galaxy | NIRCam | 2727 | Ringed collision remnant |
-| WR 140 | MIRI | 2024 | Wolf-Rayet binary — concentric dust shells |
+| <sub>Stephan's Quintet</sub> | <sub>NIRCam</sub> | <sub>2732</sub> | <sub>Compact galaxy group — tidal forces</sub> |
+| <sub>Carina Nebula</sub> | <sub>NIRCam</sub> | <sub>2731</sub> | <sub>Star-forming region</sub> |
+| <sub>SMACS 0723</sub> | <sub>NIRCam</sub> | <sub>2736</sub> | <sub>First deep field — gravitational lensing</sub> |
+| <sub>Pillars of Creation</sub> | <sub>NIRCam</sub> | <sub>2739</sub> | <sub>Eagle Nebula star-forming pillars</sub> |
+| <sub>Cartwheel Galaxy</sub> | <sub>NIRCam</sub> | <sub>2727</sub> | <sub>Ringed collision remnant</sub> |
+| <sub>WR 140</sub> | <sub>MIRI</sub> | <sub>2024</sub> | <sub>Wolf-Rayet binary — concentric dust shells</sub> |
 
 ### 02 — IR Excess / Dyson Sphere SED Analysis
 ```bash
@@ -43,11 +43,11 @@ python scripts/examples/03_wavelet_detection_demo.py
 Compares three detection methods on a crowded synthetic field with **14 injected
 point sources** at three flux levels (bright/medium/faint):
 
-| Method | Algorithm | Reference |
+| <sub>Method</sub> | <sub>Algorithm</sub> | <sub>Reference</sub> |
 |--------|-----------|-----------|
-| Baseline sigma-threshold | Simple 3σ clipping | Standard practice |
-| Wavelet (starlet à trous) | B3-spline multi-scale decomposition | Starck & Murtagh 2002 |
-| Matched filter | Optimal linear filter (Gaussian PSF) | Turin 1960 |
+| <sub>Baseline sigma-threshold</sub> | <sub>Simple 3σ clipping</sub> | <sub>Standard practice</sub> |
+| <sub>Wavelet (starlet à trous)</sub> | <sub>B3-spline multi-scale decomposition</sub> | <sub>Starck & Murtagh 2002</sub> |
+| <sub>Matched filter</sub> | <sub>Optimal linear filter (Gaussian PSF)</sub> | <sub>Turin 1960</sub> |
 
 ## Requirements
 ```
@@ -56,12 +56,12 @@ pip install astropy astroquery scipy numpy
 
 ## Algorithm References
 
-| Algorithm | Implementation | Paper |
+| <sub>Algorithm</sub> | <sub>Implementation</sub> | <sub>Paper</sub> |
 |-----------|----------------|-------|
-| IR Excess / SED fitting | `IRExcessDetector` | Suazo et al. 2024, MNRAS 531, 695 |
-| Starlet wavelet detection | `WaveletSourceDetector` | Starck & Murtagh 2002 |
-| Matched filter | `MatchedFilterDetector` | Turin 1960, IRE Trans. |
-| Microlensing anomaly | `MicrolensingAnomalyDetector` | Paczyński 1986; arXiv:2512.07924 |
+| <sub>IR Excess / SED fitting</sub> | <sub>`IRExcessDetector`</sub> | <sub>Suazo et al. 2024, MNRAS 531, 695</sub> |
+| <sub>Starlet wavelet detection</sub> | <sub>`WaveletSourceDetector`</sub> | <sub>Starck & Murtagh 2002</sub> |
+| <sub>Matched filter</sub> | <sub>`MatchedFilterDetector`</sub> | <sub>Turin 1960, IRE Trans.</sub> |
+| <sub>Microlensing anomaly</sub> | <sub>`MicrolensingAnomalyDetector`</sub> | <sub>Paczyński 1986; arXiv:2512.07924</sub> |
 
 All algorithms are in `src/cosmic_anomaly_detector/processing/algorithms.py`.
 JWST data access is in `src/cosmic_anomaly_detector/utils/jwst_access.py`.
